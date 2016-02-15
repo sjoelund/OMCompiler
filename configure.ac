@@ -100,6 +100,8 @@ AC_CANONICAL_BUILD
 AC_CANONICAL_HOST
 AC_CANONICAL_TARGET
 
+AC_ARG_ENABLE(msvc, [  --enable-msvc     Enables compilation using Visual Studio (experimental).],[host_os=win32-vs2010; MSVC=1])
+
 build_short=$build_cpu-$build_os
 host_short=$host_cpu-$host_os
 
@@ -177,7 +179,7 @@ AC_TRY_LINK([void abc() {}], [abc();], [AC_MSG_RESULT([yes])], [AC_MSG_RESULT([n
 fi
 fi
 
-dnl Disables the default CFLAGS="-g -O2"
+if test ! "$MSVC" = 1; then
 LDFLAGS_BEFORE="$LDFLAGS"
 LDFLAGS="$LDFLAGS -Wl,--no-undefined"
 AC_MSG_CHECKING([looking for --no-undefined])
@@ -202,6 +204,7 @@ for flag in -Wno-parentheses-equality -Wno-unused-variable; do
   AC_TRY_LINK([], [return 0;], [EXTRA_CFLAGS_GENERATED_CODE="$EXTRA_CFLAGS_GENERATED_CODE $flag"],[])
 done
 CFLAGS="$OLD_CFLAGS"
+fi
 
 if test ! "$DARWIN" = "1"; then
 
@@ -209,7 +212,7 @@ if test "`getconf LONG_BIT`" = "64"; then
 
 AC_MSG_CHECKING([getconf LONG_BIT = 64 CFLAGS])
 
-if echo $CFLAGS | grep -q -- -fPIC; then
+if echo $CFLAGS | grep -q -- -fPIC || test ! "$MSVC" = 1; then
   AC_MSG_RESULT([already got -fPIC])
 else
   CFLAGS_BEFORE="$CFLAGS"
@@ -287,7 +290,7 @@ fi
 
 dnl Checks for libraries.
 
-if test ! "$DARWIN" = "1" && (! echo $host | grep -q mingw ); then
+if test ! "$DARWIN" = "1" && test ! "$MSVC" = "1" && (! echo $host | grep -q mingw); then
   LIBS=""
   AC_SEARCH_LIBS(clock_gettime,rt,[],[AC_MSG_ERROR([clock_gettime missing])])
   LIBRT="$LIBS"
@@ -314,7 +317,9 @@ fi
 dnl Checks for header files.
 AC_HEADER_STDC
 
-AC_CHECK_HEADERS(sys/time.h, [], [AC_MSG_ERROR(Missing header files)])
+if test ! "$MSVC" = 1; then
+ AC_CHECK_HEADERS(sys/time.h, [], [AC_MSG_ERROR(Missing header files)])
+fi
 # AC_CHECK_HEADERS(sqlite3.h, [], [AC_MSG_ERROR(Missing header files)])
 
 AC_MSG_CHECKING([for antlr.Tool support])
@@ -331,7 +336,9 @@ fi
 
 dnl Misc. headers
 
-AC_CHECK_HEADER(expat.h,,AC_MSG_ERROR([no]))
+if test ! "$MSVC" = 1; then
+  AC_CHECK_HEADER(expat.h,,AC_MSG_ERROR([no]))
+fi
 
 dnl Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
@@ -482,7 +489,7 @@ AC_CHECK_HEADER([lp_lib.h],[LPSOLVEINC=lp_lib.h],[
 
 fi # NO_LPLIB
 
-if ! (echo "$host" | grep -q "mingw"); then
+if ! ((echo "$host" | grep -q "mingw") || test "$MSVC" = 1); then
   AC_CHECK_FUNC(socket,[LIBSOCKET=""],
    [AC_MSG_CHECKING([for libsocket]);
     AC_CHECK_LIB(socket, socket,[AC_MSG_RESULT([yes]); LIBSOCKET="-lsocket"],[AC_MSG_ERROR([neither socket nor libsocket.a found])])
@@ -514,7 +521,9 @@ fi
 
 fi
 
-OMC_AC_LAPACK(RequireFound)
+if ! test "$MSVC" = 1; then
+  OMC_AC_LAPACK(RequireFound)
+fi
 
 AC_CHECK_HEADERS(kinsol/kinsol.h kinsol/kinsol_dense.h nvector/nvector_serial.h sundials/sundials_types.h sundials/sundials_math.h,[],[NO_SUNDIALS="yes"])
 SUNDIALS_LDFLAGS="-lsundials_kinsol -lsundials_nvecserial $LD_LAPACK"
@@ -572,7 +581,9 @@ AC_CHECK_HEADERS(hwloc.h,
 
 LIBS=""
 
-AC_CHECK_LIB(pthread,pthread_self,[RT_LDFLAGS="$RT_LDFLAGS $LIBS"],[AC_MSG_ERROR([pthreads not found])])
+if test ! "$MSVC" = 1; then
+  AC_CHECK_LIB(pthread,pthread_self,[RT_LDFLAGS="$RT_LDFLAGS $LIBS"],[AC_MSG_ERROR([pthreads not found])])
+fi
 
 LIBS=""
 
@@ -608,6 +619,9 @@ AC_SUBST(CMAKE_EXTRA_DEFINES)
 AC_SUBST(DLLEXT)
 AC_SUBST(UMFPACK_SHARED)
 AC_SUBST(CONFIG_OS)
+AC_SUBST(CMAKE_TARGET)
+AC_SUBST(CMAKE_EXE)
+CMAKE_EXE=cmake
 if test "$DARWIN" = "1"; then
   EXE=""
   SHREXT=".dylib"
@@ -640,6 +654,7 @@ if test "$DARWIN" = "1"; then
   CMAKE_LDFLAGS="-Wl,-undefined -Wl,dynamic_lookup"
   UMFPACK_SHARED=ON
   CONFIG_OS=OSX
+  CMAKE_TARGET="Unix Makefiles"
 elif echo "$host" | grep -iq "mingw"; then
   EXE=".exe"
   # Yes, we build static libs on Windows, so the "shared" extension is .a
@@ -674,6 +689,43 @@ elif echo "$host" | grep -iq "mingw"; then
   OMC_LIBS="$OMC_LIBS -lwsock32 -Wl,-Bstatic -lstdc++ -ltre  -lintl -liconv -Wl,-Bdynamic -lshlwapi"
   UMFPACK_SHARED=OFF
   CONFIG_OS=Windows_NT
+  CMAKE_TARGET="MinGW Makefiles"
+elif test "$MSVC" = 1; then
+  EXE=".exe"
+  # Yes, we build static libs on Windows, so the "shared" extension is .a
+  SHREXT=".a"
+  DLLEXT=".dll"
+  LIBGC="$OMBUILDDIR/lib/$host_short/omc/gc.lib"
+  LIBSIMULATION=libSimulationRuntimeC.a
+  LIBRUNTIME=libOpenModelicaRuntimeC.a
+  LIBFMIRUNTIME=libOpenModelicaFMIRuntimeC.a
+  LIBFMILIB=libfmilib.a
+  FMILIB_SHARED=OFF
+  LIBCMINPACKLIB=libcminpack.a
+  CMINPACKLIB_SHARED=OFF
+  RT_LDFLAGS_SIM="$LDFLAGS $RT_LDFLAGS -lstdc++ -lomcgc -lexpat -lm"
+  RT_LDFLAGS_SIM_OPTIONAL="$SUNDIALS_LDFLAGS $IPOPT_LDFLAGS $UMFPACK_LDFLAGS -llis -lcminpack"
+  RT_LDFLAGS="$LDFLAGS $RT_LDFLAGS -lomcgc -lexpat -Wl,-Bstatic -lpthread -Wl,-Bdynamic -static-libgcc -lm"
+  RT_LDFLAGS_OPTIONAL="$RT_LDFLAGS_OPTIONAL"
+  RT_LDFLAGS_GENERATED_CODE="$LDFLAGS -lOpenModelicaRuntimeC $RT_LDFLAGS"
+  RT_LDFLAGS_GENERATED_CODE_SIM="$LDFLAGS -lSimulationRuntimeC -lcdaskr $RT_LDFLAGS_SIM"
+  RT_LDFLAGS_GENERATED_CODE_SOURCE_FMU="$LDFLAGS $LD_LAPACK -lm$LD_NOUNDEFINED"
+  LINK="cp -frl"
+  # No RPATH in Windows :(
+  RPATH=""
+  RPATH_QMAKE=""
+  OS_TARGET="windows"
+  AR_SH="$AR -ru"
+  LDFLAGS_SOCKET=" -lwsock32"
+  BOOTSTRAP_STATIC=""
+  AC_CHECK_TOOL(WINDRES, windres, [AC_MSG_ERROR([no])])
+  CMAKE_EXTRA_DEFINES="-DCMAKE_SYSTEM_NAME=Windows"
+  CPPFLAGS="$CPPFLAGS -DMSYS2_AUTOCONF=1"
+  OMC_LIBS="$OMC_LIBS -lwsock32 -Wl,-Bstatic -lstdc++ -ltre  -lintl -liconv -Wl,-Bdynamic -lshlwapi"
+  UMFPACK_SHARED=OFF
+  CONFIG_OS=Windows_NT
+  CMAKE_TARGET="NMake Makefiles"
+  CMAKE_EXE="cmake.exe"
 else
   EXE=""
   SHREXT=".so"
@@ -704,6 +756,7 @@ else
   BOOTSTRAP_STATIC=""
   UMFPACK_SHARED=ON
   CONFIG_OS=`echo $host_os | sed s/-gnu//`
+  CMAKE_TARGET="Unix Makefiles"
 fi
 
 AC_ARG_WITH(FMIL, [  --with-FMIL                 Link omc to FMIL (only disable when cross-compiling)],
@@ -785,6 +838,10 @@ else
   MODELICA_SPEC_PLATFORM=$OPENMODELICA_SPEC_PLATFORM
 fi
 AC_MSG_RESULT([$MODELICA_SPEC_PLATFORM])
+
+if test ! "$MSVC" = 1; then
+GRAPHSTREAM=graphstream
+fi
 
 CFLAGS="$CFLAGS"
 

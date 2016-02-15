@@ -15,6 +15,7 @@ VSVERSION = 2010
 endif
 VSCOMNTOOLS = $(VS140COMNTOOLS)
 
+GRAPHSTREAM=graphstream
 prefix = ./build
 exec_prefix = ${prefix}
 bindir = ${exec_prefix}/bin

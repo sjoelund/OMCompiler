@@ -53,7 +53,7 @@ mkbuilddirs:
 
 release: omc
 
-bootstrap-dependencies: graphstream $(BOOTSTRAP_FMIL_DEP) $(MINGW_EXTRA_LIBS)
+bootstrap-dependencies: $(GRAPHSTRAM) $(BOOTSTRAP_FMIL_DEP) $(MINGW_EXTRA_LIBS)
 	$(MAKE) -f $(defaultMakefileTarget) -C Compiler/runtime install_bootstrapping BOOTSTRAPPING=1 OMBUILDDIR=$(OMBUILDDIR)
 	$(MAKE) -f $(defaultMakefileTarget) -C Compiler builtin OMBUILDDIR=$(OMBUILDDIR)
 	$(MAKE) -f $(defaultMakefileTarget) -C Parser install_bootstrapping OMBUILDDIR=$(OMBUILDDIR)
@@ -105,6 +105,10 @@ $(OMBUILDDIR)/include/omc/c/gc_version.h: 3rdParty/gc/include/gc_version.h mkbui
 	cp -pPR $< $@
 $(OMBUILDDIR)/include/omc/c/gc_pthread_redirects.h: 3rdParty/gc/include/gc_pthread_redirects.h mkbuilddirs
 	cp -pPR $< $@
+$(OMBUILDDIR)/$(LIB_OMC)/gc.lib: 3rdParty/gc/gc.lib mkbuilddirs
+	cp -p $< $@
+3rdParty/gc/gc.lib: 3rdParty/gc/NT_STATIC_THREADS_MAKEFILE
+	nmake -C 3rdParty/gc -f NT_STATIC_THREADS_MAKEFILE nodebug=1 gc.lib
 3rdParty/gc/Makefile: 3rdParty/gc/configure.ac
 	(cd 3rdParty/gc && autoreconf -vif && automake --add-missing && ./configure "--host=$(host)" $(LIBGC_EXTRA_CONFIGURATION) --disable-gcj-support --disable-java-finalization --enable-large-config CC="$(CC)" CXX="$(CXX)" CFLAGS="$(CFLAGS)" CPPFLAGS="$(CPPFLAGS) -DLARGE_CONFIG -DTHREAD_LOCAL_ALLOC")
 
