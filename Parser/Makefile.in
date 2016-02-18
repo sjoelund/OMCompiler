@@ -4,6 +4,7 @@ CFLAGS=@CFLAGS@ -Wall @EXTRA_CFLAGS_GENERATED_CODE@
 CPPFLAGS=@CPPFLAGS@ $(RMLINC) -I. -I$(ANTLR) -I$(ANTLR)/include -I../3rdParty/gc/include $(BUILDINC)
 OMC=../build/bin/omc
 SHREXT=@SHREXT@
+OBJ_EXT=@OBJ_EXT@
 ifeq (x86_64,@target_cpu@)
 ANTLR64=--enable-64bit
 endif

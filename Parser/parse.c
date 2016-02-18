@@ -364,7 +364,7 @@ static void* parseString(const char* data, const char* interactiveFilename, int 
   pANTLR3_UINT8               fName;
   pANTLR3_INPUT_STREAM        input;
   parser_members members;
-  pthread_once(&parser_once_create_key,make_key);
+  pthread_once(&parser_once_create_key, (void*) make_key);
   pthread_setspecific(modelicaParserKey,&members);
 
   members.encoding = "UTF-8";
@@ -400,7 +400,7 @@ static void* parseFile(const char* fileName, const char* infoName, int flags, co
   pANTLR3_INPUT_STREAM        input;
   int len = 0;
   parser_members members;
-  pthread_once(&parser_once_create_key,make_key);
+  pthread_once(&parser_once_create_key, (void*) make_key);
   pthread_setspecific(modelicaParserKey,&members);
 
   members.encoding = encoding;

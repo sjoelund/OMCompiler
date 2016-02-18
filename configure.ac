@@ -100,7 +100,7 @@ AC_CANONICAL_BUILD
 AC_CANONICAL_HOST
 AC_CANONICAL_TARGET
 
-AC_ARG_ENABLE(msvc, [  --enable-msvc     Enables compilation using Visual Studio (experimental).],[host_os=win32-vs2010; MSVC=1])
+AC_ARG_ENABLE(msvc, [  --enable-msvc     Enables compilation using Visual Studio (experimental).],[host_os=windows-msvc2013; MSVC=1])
 
 build_short=$build_cpu-$build_os
 host_short=$host_cpu-$host_os
@@ -621,7 +621,13 @@ AC_SUBST(UMFPACK_SHARED)
 AC_SUBST(CONFIG_OS)
 AC_SUBST(CMAKE_TARGET)
 AC_SUBST(CMAKE_EXE)
+AC_SUBST(CMAKE_MAKE_CMD)
+AC_SUBST(FMILINSTALL)
+AC_SUBST(OBJ_EXT)
 CMAKE_EXE=cmake
+CMAKE_MAKE_CMD=""
+FMILINSTALL=fmil-install
+OBJ_EXT=".o"
 if test "$DARWIN" = "1"; then
   EXE=""
   SHREXT=".dylib"
@@ -691,6 +697,7 @@ elif echo "$host" | grep -iq "mingw"; then
   CONFIG_OS=Windows_NT
   CMAKE_TARGET="MinGW Makefiles"
 elif test "$MSVC" = 1; then
+  OBJ_EXT=".obj"
   EXE=".exe"
   # Yes, we build static libs on Windows, so the "shared" extension is .a
   SHREXT=".a"
@@ -699,8 +706,9 @@ elif test "$MSVC" = 1; then
   LIBSIMULATION=libSimulationRuntimeC.a
   LIBRUNTIME=libOpenModelicaRuntimeC.a
   LIBFMIRUNTIME=libOpenModelicaFMIRuntimeC.a
-  LIBFMILIB=libfmilib.a
+  LIBFMILIB="fmilib.lib"
   FMILIB_SHARED=OFF
+  FMILINSTALL=fmil-install-msvc
   LIBCMINPACKLIB=libcminpack.a
   CMINPACKLIB_SHARED=OFF
   RT_LDFLAGS_SIM="$LDFLAGS $RT_LDFLAGS -lstdc++ -lomcgc -lexpat -lm"
@@ -726,6 +734,7 @@ elif test "$MSVC" = 1; then
   CONFIG_OS=Windows_NT
   CMAKE_TARGET="NMake Makefiles"
   CMAKE_EXE="cmake.exe"
+  CMAKE_MAKE_CMD="nmake.exe /nologo"
 else
   EXE=""
   SHREXT=".so"

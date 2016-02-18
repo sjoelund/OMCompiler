@@ -30,6 +30,7 @@ CFLAGS =-g -O2 -falign-functions
 MSGPACK_CFLAGS = -march=i686
 CMAKE = $(OMDEV)/bin/cmake/bin/cmake
 CMAKE_TARGET = "MSYS Makefiles"
+CMAKE_MAKE_CMD=$(MAKE)
 DBUS_INCLUDE_DIR = $(OMDEV)/lib/dbus-1.6.0-win32/include/
 DBUS_INCLUDE_LIB_DIR = $(OMDEV)/lib/dbus-1.6.0-win32/lib/
 DBUS_PATH = $(OMDEV)/lib/dbus-1.6.0-win32/
