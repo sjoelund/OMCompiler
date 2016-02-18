@@ -30,7 +30,7 @@ UTIL_OBJS=$(UTIL_OBJS_MINIMAL) java_interface$(OBJ_EXT) libcsv$(OBJ_EXT) read_cs
 else
 UTIL_OBJS=$(UTIL_OBJS_MINIMAL)
 endif
-UTIL_HFILES=base_array.h boolean_array.h division.h generic_array.h omc_error.h index_spec.h integer_array.h java_interface.h jni.h jni_md.h jni_md_solaris.h jni_md_windows.h list.h memory_pool.h modelica.h modelica_string.h read_write.h write_matlab4.h read_matlab4.h read_csv.h libcsv.h real_array.h ringbuffer.h rtclock.h string_array.h utility.h varinfo.h simulation_options.h tinymt64.h omc_mmap.h cJSON.h modelica_string_lit.h omc_init.h
+UTIL_HFILES=base_array.h boolean_array.h division.h generic_array.h omc_error.h index_spec.h integer_array.h java_interface.h jni.h jni_md.h jni_md_solaris.h jni_md_windows.h list.h memory_pool.h modelica_string.h read_write.h write_matlab4.h read_matlab4.h read_csv.h libcsv.h real_array.h ringbuffer.h rtclock.h string_array.h utility.h varinfo.h simulation_options.h tinymt64.h omc_mmap.h cJSON.h modelica_string_lit.h omc_init.h
 
 # Files for math-support
 MATH_OBJS=pivot$(OBJ_EXT)
