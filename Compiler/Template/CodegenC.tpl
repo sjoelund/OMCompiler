@@ -3809,9 +3809,7 @@ template evaluateDAEResiduals(list<list<SimEqSystem>> resEquations, String model
     data->simulationInfo->callStatistics.functionEvalDAE++;
 
     <%if Flags.isSet(Flags.PARMODAUTO) then 'PM_functionDAERes(<%nrfuncs%>, data, threadData, functionDAERes_systems);'
-    else (resEquations |> eqLst => (eqLst |> eq hasindex i0 =>
-                    equation_call(eq, modelNamePrefix)
-                    ;separator="\n");separator="\n") %>
+    else '<%fncalls%>' %>
 
     <%symbolName(modelNamePrefix,"function_savePreSynchronous")%>(data, threadData);
 
@@ -4827,7 +4825,13 @@ template equation_call(SimEqSystem eq, String modelNamePrefix)
   then ""
   else
   (
-  let ix = equationIndex(eq)
+  let ix = match eq
+  case e as SES_LINEAR(alternativeTearing = SOME(LINEARSYSTEM))
+  case e as SES_NONLINEAR(alternativeTearing = SOME(NONLINEARSYSTEM)) then
+    equationIndexAlternativeTearing(eq)
+  else
+    equationIndex(eq)
+  end match
   <<
   <% if profileAll() then 'SIM_PROF_TICK_EQ(<%ix%>);' %>
   <%symbolName(modelNamePrefix,"eqFunction")%>_<%ix%>(data, threadData);
