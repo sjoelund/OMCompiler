@@ -9,27 +9,19 @@ import SCodeDumpTpl;
  *****************************************************************************/
 template dumpDAE(list<DAEDump.compWithSplitElements> fixedDaeList, DAEDump.functionList funLists)
 ::=
- let comp_str =(fixedDaeList |> dae => dumpComp(dae) ;separator="\n")
- let fun_str = match funLists case FUNCTION_LIST(__) then dumpFunctions(funcs)
-   if fun_str then
-     <<
-     <%fun_str%><%\n\n%>
-     <%comp_str%>
-     >>
-   else
-     <<
-     <%comp_str%>
-     >>
+   <<
+   <%match funLists case FUNCTION_LIST(__) then dumpFunctions(funcs)%><%
+   fixedDaeList |> dae => dumpComp(dae) ;separator="\n"%>
+   >>
 end dumpDAE;
 
 template dumpComp(DAEDump.compWithSplitElements fixedDae)
 ::=
   match fixedDae case COMP_WITH_SPLIT(__) then
-    let cmt_str = dumpCommentOpt(comment)
     let ann_str = dumpClassAnnotation(comment)
     let name_rep = if (Flags.getConfigBool(Flags.MODELICA_OUTPUT)) then System.stringReplace(name, ".","__") else name
     <<
-    class <%name_rep%><%cmt_str%>
+    class <%name_rep%><%dumpCommentOpt(comment)%>
     <%dumpCompStream(spltElems)%>
     <%if ann_str then "  "%><%ann_str%>
     end <%name_rep%>;<%\n%>
@@ -40,19 +32,13 @@ template dumpCompStream(DAEDump.splitElements elems)
 ::=
   match elems
     case SPLIT_ELEMENTS(__) then
-      let var_str = dumpVars(v)
-      let ieq_str = dumpInitialEquationSection(ie)
-      let ial_str = dumpInitialAlgorithmSection(ia)
-      let eq_str =  dumpEquationSection(e)
-      let al_str = dumpAlgorithmSection(a)
-      let sm_str = (sm |> flatSM => dumpStateMachineSection(flatSM) ;separator="\n")
       <<
-      <%var_str%>
-      <%sm_str%>
-      <%ieq_str%>
-      <%ial_str%>
-      <%eq_str%>
-      <%al_str%>
+      <%dumpVars(v)%>
+      <%(sm |> flatSM => dumpStateMachineSection(flatSM) ;separator="\n")%>
+      <%dumpInitialEquationSection(ie)%>
+      <%dumpInitialAlgorithmSection(ia)%>
+      <%dumpEquationSection(e)%>
+      <%dumpAlgorithmSection(a)%>
       >>
 end dumpCompStream;
 
@@ -61,22 +47,20 @@ end dumpCompStream;
  *****************************************************************************/
 template dumpFunctions(list<DAE.Function> funcs)
 ::=
-  (funcs |> func => dumpFunction(func) ;separator="\n\n")
+  (funcs |> func => dumpFunction(func) )
 end dumpFunctions;
 
 template dumpFunction(DAE.Function function)
 ::=
   match function
     case FUNCTION(__) then
-      let inline_str = dumpInlineType(inlineType)
-      let cmt_str = dumpCommentOpt(comment)
       let ann_str = dumpClassAnnotation(comment)
-      let impure_str = if isImpure then 'impure '
       <<
-      <%impure_str%>function <%AbsynDumpTpl.dumpPathNoQual(path)%><%inline_str%><%cmt_str%>
+      <%if isImpure then 'impure '%>function <%AbsynDumpTpl.dumpPathNoQual(path)%><%dumpInlineType(inlineType)%><%dumpCommentOpt(comment)%>
       <%dumpFunctionDefinitions(functions)%>
       <%if ann_str then "  "%><%ann_str%>
       end <%AbsynDumpTpl.dumpPathNoQual(path)%>;
+      <%\n%>
       >>
     case RECORD_CONSTRUCTOR(__) then
       <<
@@ -84,6 +68,7 @@ template dumpFunction(DAE.Function function)
         <%dumpRecordInputVarStr(type_)%>
         output <%dumpPathLastIndent(path)%> res;
       end <%AbsynDumpTpl.dumpPathNoQual(path)%>;
+      <%\n%>
       >>
 end dumpFunction;
 
@@ -228,32 +213,22 @@ end dumpInlineType;
  *     SECTION: VARIABLE SECTION                                             *
  *****************************************************************************/
 template dumpVars(list<DAE.Element> v)
-::= (v |> var => dumpVar(var,false) ;separator="\n")
+::= (v |> var => dumpVar(var,false))
 end dumpVars;
 
 template dumpVar(DAE.Element lst, Boolean printTypeDimension)
 ::=
 match lst
  case VAR(__) then
-   let final = match variableAttributesOption case SOME(VariableAttributes) then dumpFinalPrefix(VariableAttributes)
-   let varVisibility = dumpVarVisibility(protection)
-   let varParallelism = dumpVarParallelism(parallelism)
-   let varKind = dumpVarKind(kind)
-   let varDirection = dumpVarDirection(direction)
    let &attr = buffer ""
-   let varType = dumpType(ty, &attr)
-   let dim_str = if printTypeDimension then dumpTypeDimensions(dims)
-   let varName = dumpCref(componentRef)
-   let bindingExp = match binding case SOME(exp) then dumpExp(exp)
-   let varAttr = match variableAttributesOption case SOME(VariableAttributes) then dumpVariableAttributes(VariableAttributes)
-   let cmt_str = dumpCommentOpt(comment)
-   let ann_str = dumpCompAnnotation(comment)
-   let binding_str = if bindingExp then ' = <%bindingExp%>'
    /* uncomment this and use the source_str if you want to print the typeLst inside the source (we should maybe put it on a flag or something)
    let source_str = match source case SOURCE(__) then (typeLst |> tp => AbsynDumpTpl.dumpPath(tp) ;separator=", ") else ''
    */
    <<
-    <%varVisibility%><%final%><%varParallelism%><%varKind%><%varDirection%> <%varType%><%dim_str%> <%varName%><%attr%><%varAttr%><%binding_str%><%cmt_str%><%ann_str%>;
+    <%dumpVarVisibility(protection)%><%match variableAttributesOption case SOME(VariableAttributes) then dumpFinalPrefix(VariableAttributes)%><%
+    dumpVarParallelism(parallelism)%><%dumpVarKind(kind)%><%dumpVarDirection(direction)%> <%dumpType(ty, &attr)%><%if printTypeDimension then dumpTypeDimensions(dims)%> <%
+    dumpCref(componentRef)%><%attr%><%match variableAttributesOption case SOME(VariableAttributes) then dumpVariableAttributes(VariableAttributes)%><%if binding then ' = <%match binding case SOME(exp) then dumpExp(exp)%>'%><%
+    dumpCommentOpt(comment)%><%dumpCompAnnotation(comment)%>;<%\n%>
    >>
 end dumpVar;
 
@@ -346,26 +321,21 @@ match ty
     let dims_accum_str = if dims_accum then '<%dims_accum%>, <%dims_str%>' else dims_str
     dumpArrayType(ty, dims_accum_str, &attributes)
   else
-    let ty_str = dumpType(ty, &attributes)
-    let dims_str = if dims_accum then '[<%dims_accum%>]'
-    '<%ty_str%><%dims_str%>'
+    '<%dumpType(ty, &attributes)%><%if dims_accum then '[<%dims_accum%>]'%>'
 end dumpArrayType;
 
 template dumpTupleType(list<Type> tys, String ty_begin, String ty_end)
 ::=
   let &attr = buffer ""
-  '<%ty_begin%><%(tys |> ty => dumpType(ty, &attr) ;separator=", ")%><%ty_end%>'
+  '<%ty_begin%><%(tys |> ty => dumpType(ty, &attr) ; separator=", "; empty)%><%ty_end%>'
 end dumpTupleType;
 
 template dumpFunctionType(Type ty)
 ::=
 match ty
   case T_FUNCTION(__) then
-    let args_str = (funcArg |> arg => dumpFuncArg(arg) ;separator=", ")
-    let src_str = AbsynDumpTpl.dumpPath(path)
     let &attr = buffer ""
-    let res_str = dumpType(funcResultType, &attr)
-    '<%src_str%><function>(<%args_str%>) => <%res_str%>'
+    '<%AbsynDumpTpl.dumpPath(path)%><function>(<%(funcArg |> arg => dumpFuncArg(arg) ;separator=", ")%>) => <%dumpType(funcResultType, &attr)%>'
 end dumpFunctionType;
 
 template dumpFuncArg(FuncArg arg)
@@ -525,10 +495,7 @@ template dumpDistribution(Distribution distribution)
 ::=
 match distribution
   case DISTRIBUTION(__) then
-    let name_str = dumpExp(name)
-    let params_str = dumpExp(params)
-    let paramnames_str = dumpExp(paramNames)
-    'Distribution(name = <%name_str%>, params = <%params_str%>, paramNames = <%paramnames_str%>)'
+    'Distribution(name = <%dumpExp(name)%>, params = <%dumpExp(params)%>, paramNames = <%dumpExp(paramNames)%>)'
 end dumpDistribution;
 
 template dumpStartOriginAttrOpt(Option<Exp> startOrigin)
@@ -560,8 +527,7 @@ end dumpCref;
 template dumpTypeDimensions(list<Dimension> dimensionLst)
 ::=
   if dimensionLst then
-    let sub_str = (dimensionLst |> s => dumpDimension(s) ;separator=", ")
-    '[<%sub_str%>]'
+    '[<%(dimensionLst |> s => dumpDimension(s) ;separator=", "; empty)%>]'
 end dumpTypeDimensions;
 
 
@@ -569,11 +535,9 @@ template dumpSubscripts(list<Subscript> subscriptLst)
 ::=
   if subscriptLst then
     if (Flags.getConfigBool(Flags.MODELICA_OUTPUT)) then
-    let sub_str = (subscriptLst |> s => dumpSubscript(s) ;separator="_")
-    '_<%sub_str%>'
+    '_<%(subscriptLst |> s => dumpSubscript(s) ;separator="_")%>'
     else
-    let sub_str = (subscriptLst |> s => dumpSubscript(s) ;separator=",")
-    '[<%sub_str%>]'
+    '[<%(subscriptLst |> s => dumpSubscript(s) ;separator=",")%>]'
 end dumpSubscripts;
 
 template dumpSubscript(DAE.Subscript subscript)
@@ -593,7 +557,7 @@ template dumpInitialEquationSection(list<DAE.Element> ie)
   if ie then
     <<
     initial equation
-      <%ie |> ineq => dumpEquationElement(ineq) ;separator="\n"%>
+      <%ie |> ineq => dumpEquationElement(ineq) ;separator="\n"; empty%>
     >>
 end dumpInitialEquationSection;
 
@@ -606,7 +570,7 @@ template dumpEquationSection(list<DAE.Element> e)
   if e then
     <<
     equation
-      <%e |> eq => dumpEquationElement(eq) ;separator="\n"%>
+      <%e |> eq => dumpEquationElement(eq) ;separator="\n" ; empty%>
     >>
 end dumpEquationSection;
 
@@ -636,70 +600,50 @@ end dumpEquationElement;
 
 template dumpEquation(DAE.Exp lhs, DAE.Exp rhs, DAE.ElementSource src)
 ::=
-  let lhs_str = match lhs case IFEXP(__) then '(<%dumpExp(lhs)%>)' else dumpExp(lhs)
-  let rhs_str = dumpExp(rhs)
-  let src_str = dumpSource(src)
   <<
-  <%lhs_str%> = <%rhs_str%><%src_str%>;
+  <%match lhs case IFEXP(__) then '(<%dumpExp(lhs)%>)' else dumpExp(lhs)%> = <%dumpExp(rhs)%><%dumpSource(src)%>;
   >>
 end dumpEquation;
 
 template dumpEquEquation(DAE.ComponentRef lhs, DAE.ComponentRef rhs, DAE.ElementSource src)
 ::=
-  let lhs_str = dumpCref(lhs)
-  let rhs_str = dumpCref(rhs)
-  let src_str = dumpSource(src)
   <<
-  <%lhs_str%> = <%rhs_str%><%src_str%>;
+  <%dumpCref(lhs)%> = <%dumpCref(rhs)%><%dumpSource(src)%>;
   >>
 end dumpEquEquation;
 
 template dumpDefine(DAE.ComponentRef lhs, DAE.Exp rhs, DAE.ElementSource src)
 ::=
-  let lhs_str = dumpCref(lhs)
-  let rhs_str = dumpExp(rhs)
-  let src_str = dumpSource(src)
   <<
-  <%lhs_str%> = <%rhs_str%><%src_str%>;
+  <%dumpCref(lhs)%> = <%dumpExp(rhs)%><%dumpSource(src)%>;
   >>
 end dumpDefine;
 
 template dumpAssert(DAE.Exp cond, DAE.Exp msg, DAE.Exp lvl, DAE.ElementSource src)
 ::=
-  let cond_str = dumpExp(cond)
-  let msg_str = dumpExp(msg)
-  let lvl_str = match lvl case DAE.ENUM_LITERAL(index = 2) then ', AssertionLevel.warning'
-  let src_str = dumpSource(src)
   <<
-  assert(<%cond_str%>, <%msg_str%><%lvl_str%>)<%src_str%>;
+  assert(<%dumpExp(cond)%>, <%dumpExp(msg)%><%match lvl case DAE.ENUM_LITERAL(index = 2) then ', AssertionLevel.warning'%>)<%dumpSource(src)%>;
   >>
 end dumpAssert;
 
 template dumpTerminate(DAE.Exp msg, DAE.ElementSource src)
 ::=
-  let msg_str = dumpExp(msg)
-  let src_str = dumpSource(src)
   <<
-  terminate(<%msg_str%>)<%src_str%>;
+  terminate(<%dumpExp(msg)%>)<%dumpSource(src)%>;
   >>
 end dumpTerminate;
 
 template dumpReinit(DAE.ComponentRef cref, DAE.Exp exp, DAE.ElementSource src)
 ::=
-  let cref_str = dumpCref(cref)
-  let exp_str = dumpExp(exp)
-  let src_str = dumpSource(src)
   <<
-  reinit(<%cref_str%>, <%exp_str%>)<%src_str%>;
+  reinit(<%dumpCref(cref)%>, <%dumpExp(exp)%>)<%dumpSource(src)%>;
   >>
 end dumpReinit;
 
 template dumpNoRetCall(DAE.Exp call_exp, DAE.ElementSource src)
 ::=
-  let call_str = dumpExp(call_exp)
-  let src_str = dumpSource(src)
   <<
-  <%call_str%><%src_str%>;
+  <%dumpExp(call_exp)%><%dumpSource(src)%>;
   >>
 end dumpNoRetCall;
 
@@ -707,20 +651,17 @@ template dumpWhenEquation(DAE.Element lst)
 ::=
 match lst
   case WHEN_EQUATION(__) then
-    let when_cond_str = dumpExp(condition)
-    let body_str = (equations |> e => dumpEquationElement(e) ;separator="\n")
     let elsewhen_str = match elsewhen_ case SOME(el) then dumpWhenEquation(el)
-    let src_str = dumpSource(source)
     if not elsewhen_str then
     <<
-    when <%when_cond_str%> then
-      <%body_str%>
-    end when<%src_str%>;
+    when <%dumpExp(condition)%> then
+      <%(equations |> e => dumpEquationElement(e) ;separator="\n"; empty)%>
+    end when<%dumpSource(source)%>;
     >>
     else
     <<
-    when <%when_cond_str%> then
-      <%body_str%>
+    when<%dumpExp(condition)%> then
+      <%(equations |> e => dumpEquationElement(e) ;separator="\n"; empty)%>
     else<%elsewhen_str%>
     >>
 end dumpWhenEquation;
@@ -732,21 +673,16 @@ match conds
   case if_cond :: elseif_conds then
     match branches
       case if_branch :: elseif_branches then
-        let if_cond_str = dumpExp(if_cond)
-        let if_branch_str = (if_branch |> e => dumpEquationElement(e) ;separator="\n")
-        let elseif_str = dumpElseIfEquation(elseif_conds, elseif_branches)
-        let else_str = if else_branch then
+        <<
+        if <%dumpExp(if_cond)%> then
+          <%(if_branch |> e => dumpEquationElement(e) ;separator="\n"; empty)%>
+        <%dumpElseIfEquation(elseif_conds, elseif_branches)%>
+        <%if else_branch then
           <<
           else
-            <%else_branch |> e => dumpEquationElement(e) ;separator="\n"%>
-          >>
-        let src_str = dumpSource(src)
-        <<
-        if <%if_cond_str%> then
-          <%if_branch_str%>
-        <%elseif_str%>
-        <%else_str%>
-        end if<%src_str%>;
+            <%else_branch |> e => dumpEquationElement(e) ;separator="\n"; empty%>
+          >>%>
+        end if<%dumpSource(src)%>;
         >>
 end dumpIfEquation;
 
@@ -757,13 +693,10 @@ match condition1
   case cond :: rest_conds then
     match equations
       case branch :: rest_branches then
-        let cond_str = dumpExp(cond)
-        let branch_str = (branch |> e => dumpEquationElement(e) ;separator="\n")
-        let rest_str = dumpElseIfEquation(rest_conds, rest_branches)
         <<
-        elseif <%cond_str%> then
-          <%branch_str%>
-        <%rest_str%>
+        elseif <%dumpExp(cond)%> then
+          <%(branch |> e => dumpEquationElement(e) ;separator="\n"; empty)%>
+        <%dumpElseIfEquation(rest_conds, rest_branches)%>
         >>
 end dumpElseIfEquation;
 

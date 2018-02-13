@@ -436,9 +436,7 @@ algorithm
 
         Print.clearBuf();
         execStat("Transformations before Dump");
-        s := if Config.silent() then "" else DAEDump.dumpStr(d, funcs);
-        execStat("DAEDump done");
-        Print.printBuf(s);
+
         if Flags.isSet(Flags.DAE_DUMP_GRAPHV) then
           DAEDump.dumpGraphviz(d);
         end if;
@@ -448,7 +446,10 @@ algorithm
         d := if boolNot(Flags.isSet(Flags.TRANSFORMS_BEFORE_DUMP)) then DAEUtil.transformationsBeforeBackend(cache,env,d) else  d;
 
         if not Config.silent() then
-          print(Print.getString());
+          print(DAEDump.dumpStr(d, funcs));
+          execStat("DAEDump via string done");
+          DAEDump.dumpStdout(d, funcs);
+          execStat("DAEDump stdout done");
         end if;
         execStat("Transformations before backend");
 

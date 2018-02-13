@@ -2568,6 +2568,20 @@ algorithm
   outString := Tpl.tplString2(DAEDumpTpl.dumpDAE, fixedDae, funList);
 end dumpStr;
 
+public function dumpStdout "This function prints the DAE to a string."
+  input DAE.DAElist inDAElist;
+  input DAE.FunctionTree functionTree;
+protected
+  list<DAE.Element> daelist;
+  functionList funList;
+  list<compWithSplitElements> fixedDae;
+algorithm
+  DAE.DAE(elementLst = daelist) := inDAElist;
+  funList := dumpFunctionList(functionTree);
+  fixedDae := List.map(daelist, DAEUtil.splitComponent);
+  Tpl.closeFile(Tpl.tplCallWithFailError2(DAEDumpTpl.dumpDAE, fixedDae, funList, Tpl.redirectToFile(Tpl.emptyTxt, "/proc/self/fd/0")));
+end dumpStdout;
+
 public function dumpElementsStr "This function prints the DAE to a string."
   input list<DAE.Element> els;
   output String outString;
