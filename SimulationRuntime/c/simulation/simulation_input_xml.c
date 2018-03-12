@@ -78,6 +78,13 @@ typedef struct hash_string_long
   UT_hash_handle hh;
 } hash_string_long;
 
+#define DELETE_ALL(hash_type,table) { \
+  struct hash_type *current_item, *tmp; \
+  HASH_ITER(hh, table, current_item, tmp) { \
+    HASH_DEL(table,current_item); \
+    free(current_item); \
+  } \
+}
 static inline const char* findHashStringStringNull(hash_string_string *ht, const char *key)
 {
   hash_string_string *res;
@@ -873,6 +880,9 @@ void read_input_xml(MODEL_DATA* modelData,
   messageClose(LOG_DEBUG);
 
   XML_ParserFree(parser);
+  DELETE_ALL(hash_string_long, mapAlias);
+  DELETE_ALL(hash_string_long, mapAliasParam);
+  DELETE_ALL(hash_string_long, mapAliasSen);
 }
 
 /* reads modelica_string value from a string */
