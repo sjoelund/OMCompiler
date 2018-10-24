@@ -280,13 +280,16 @@ if true then /* Suppress output */
     "../FrontEnd/NFInstDump.mo",
     "../FrontEnd/UnitAbsynBuilder.mo",
     "../FrontEnd/UnitChecker.mo",
-
-  // "MidCode";
+   // "MidCode";
+    "../MidCode/MidCodeUtil.mo",
     "../MidCode/MidCode.mo",
     "../MidCode/DAEToMid.mo",
     "../MidCode/MidToMid.mo",
     "../MidCode/HashTableMidVar.mo",
-
+  // "LLVM"
+    "../LLVM/MidToLLVMUtil.mo",
+    "../LLVM/EXT_LLVM.mo",
+    "../LLVM/MidToLLVM.mo",
   // "NFFrontEnd";
     "../NFFrontEnd/NFAlgorithm.mo",
     "../NFFrontEnd/NFBinding.mo",

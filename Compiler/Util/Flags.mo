@@ -545,6 +545,14 @@ constant DebugFlag WARNING_MINMAX_ATTRIBUTES = DEBUG_FLAG(184, "warnMinMax", tru
 constant DebugFlag NF_EXPAND_FUNC_ARGS = DEBUG_FLAG(185, "nfExpandFuncArgs", false,
   Util.gettext("Expand all function arguments in the new frontend."));
 
+//Added for LLVM
+constant DebugFlag JIT_EVAL_FUNC = DEBUG_FLAG(186, "jit_eval_func", false,
+ Util.gettext("Turns on/off JIT compilation"));
+constant DebugFlag JIT_DUMP_IR = DEBUG_FLAG(187, "jit_dump_ir", false,
+ Util.gettext("Dumps LLVM-IR before execution"));
+constant DebugFlag JIT_NO_OPT = DEBUG_FLAG(188, "jit_no_opt", false,
+ Util.gettext("Generates LLVM-IR without optimization."));
+
 // This is a list of all debug flags, to keep track of which flags are used. A
 // flag can not be used unless it's in this list, and the list is checked at
 // initialization so that all flags are sorted by index (and thus have unique
@@ -735,7 +743,10 @@ constant list<DebugFlag> allDebugFlags = {
   NF_API,
   FMI20_DEPENDENCIES,
   WARNING_MINMAX_ATTRIBUTES,
-  NF_EXPAND_FUNC_ARGS
+  NF_EXPAND_FUNC_ARGS,
+  JIT_EVAL_FUNC,
+  JIT_DUMP_IR,
+  JIT_NO_OPT
 };
 
 public

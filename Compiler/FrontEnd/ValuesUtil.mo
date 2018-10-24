@@ -127,6 +127,24 @@ algorithm
       eltTps = List.map(valLst,valueExpType);
       varLst = List.threadMap(eltTps,nameLst,valueExpTypeExpVar);
     then DAE.T_COMPLEX(ClassInf.RECORD(path),varLst,NONE());
+    /*MetaModelica types, TODO: It seems that meta_record and record are not quite comp here.*/
+    case(Values.RECORD(path,valLst,nameLst,indx)) equation
+	  eltTps = List.map(valLst,valueExpType);
+    then DAE.T_METARECORD(path,/*TODO:!*/path,eltTps,indx,/*TODO:!*/{},/*Used in Dynload context*/false);
+    case Values.LIST(valLst) equation
+		 eltTp = valueExpType(listHead(valLst));
+    then DAE.T_METALIST(eltTp);
+
+    case Values.META_TUPLE(valLst) equation
+		  eltTps = List.map(valLst,valueExpType);
+    then DAE.T_METATUPLE(eltTps);
+
+	case Values.META_ARRAY(valLst) equation
+		  eltTp = valueExpType(listHead(valLst));
+    then DAE.T_METAARRAY(eltTp);
+
+    case Values.META_BOX(_)
+  then DAE.T_METABOXED(valueExpType(inValue.value));
 
     case _
       equation

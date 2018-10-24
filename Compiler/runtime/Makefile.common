@@ -25,7 +25,10 @@ OMC_OBJ_SHARED = Error_omc$(OBJEXT) \
   Lapack_omc.o Settings_omc$(OBJEXT) \
   UnitParserExt_omc.o unitparser.o \
   IOStreamExt_omc.o Socket_omc.o ZeroMQ_omc.o getMemorySize.o \
-  is_utf8.o
+  is_utf8.o \
+  llvm_gen_wrappers.o \
+  real_array_jit.o \
+  llvm_gen$(OBJEXT)
 
 OMC_OBJ_STUBS = corbaimpl_stub_omc.o
 
@@ -111,6 +114,9 @@ Socket_omc.o : socketimpl.c
 ZeroMQ_omc.o : zeromqimpl.c
 UnitParserExt_omc.o : unitparserext.cpp unitparser.h
 BackendDAEEXT_omc.o : BackendDAEEXT.cpp $(RML_COMPAT) matching.c matchmaker.h matching_cheap.c
+llvm_gen_wrappers.o : llvm_gen_wrappers.c llvm_gen_wrappers.h
+real_array_jit.o : real_array_jit.c real_array_jit.h
+llvm_gen.o : llvm_gen_modelica_constants.h llvm_gen_util.hpp llvm_gen_util.cpp llvm_gen.hpp llvm_gen.cpp
 
 # Objects depending on BOOTH
 Dynload_omc$(OBJEXT): systemimpl.h errorext.h $(BOOTH) $(SimRuntimeCDir)/util/read_write.h $(SimRuntimeCDir)/gc/omc_gc.h Dynload.cpp $(RML_COMPAT)

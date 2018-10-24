@@ -868,7 +868,6 @@ algorithm
         res = Settings.getInstallationDirectoryPath();
       then
         (cache,Values.STRING(res));
-
     case (cache,_,"getModelicaPath",{},_)
       equation
         res = Settings.getModelicaPath(Config.getRunningTestsuite());
@@ -2364,6 +2363,13 @@ algorithm
 end cevalCallFunction;
 
 protected
+//Added imports
+import SimCodeFunctionUtil;
+import DAEToMid;
+import MidToLLVM;
+import MidCode;
+import EXT_LLVM;
+import MidCodeUtil;
 
 function cevalCallFunctionEvaluateOrGenerate
 "This function evaluates CALL expressions, i.e. function calls.
@@ -2448,7 +2454,43 @@ algorithm
       SCode.Restriction res;
       Absyn.FunctionRestriction funcRest;
       DAE.Type ty;
-
+      /*Used for DAE -> SimCode -> MidCode -> LLVM Translation*/
+      DAE.Function daeMainFunction "The Function that we are currently attempting to JIT";
+	  SimCodeFunction.Function simMainFunction"Same function but in SimCode IR.";
+	  MidCode.Function midMainFunction;
+      list<DAE.Exp> literals;
+      list<DAE.Function> daeElements "Functions that are called by the DAEMainFunction";
+      list<DAE.Type> metarecordTypes "The MetaRecord types";
+      list<SimCodeFunction.Function> simfns "SimCode translation of daeElements.";
+      list<SimCodeFunction.RecordDeclaration> recordDecls "Record declarations";
+      list<String> includes, libs, libPaths,includeDirs "Includes, libs etc.";
+    list<MidCode.Function> midFuncs "MidCode IR representation of these functions.";
+     case (cache,env, DAE.CALL(path = funcpath, attr = DAE.CALL_ATTR(builtin = false)), vallst, _, msg, _)
+       guard Flags.isSet(Flags.JIT_EVAL_FUNC)
+       algorithm
+         execStatReset(); //Start measuring JIT compile time.
+         p := SymbolTable.getAbsyn();
+         name := generateFunctionName(funcpath);
+         (cache,daeMainFunction,daeElements,metarecordTypes) := collectDependencies(cache,env,funcpath);
+         /* Translate DAE to SimCode */
+         (daeElements,literals) := SimCodeFunctionUtil.findLiterals(daeMainFunction::daeElements);
+         (simMainFunction::simfns, recordDecls, includes, includeDirs, libs, libPaths) := SimCodeFunctionUtil.elaborateFunctions(p, daeElements, metarecordTypes, literals, {});
+         //Might be redudant...
+         SimCodeFunctionUtil.checkValidMainFunction(name,simMainFunction);
+         /*Generate MidCode IR*/
+         midFuncs := DAEToMid.DAEFunctionsToMid(simMainFunction::simfns);
+         /* Set up the neccessary data structures in the LLVM context. */
+         EXT_LLVM.initGen(name);
+         MidToLLVM.genRecordDecls(recordDecls);
+         /*Generate LLVM IR in memory*/
+         MidToLLVM.genProgram(MidCode.PROGRAM(name,midFuncs));
+         /*JIT compile. Return a newval.*/
+         newval := match midFuncs
+           local MidCode.Function H "The 'main' function. The top level expression calls it"; List<MidCode.Function> T = {};
+	         case H::T then MidToLLVM.JIT(H,vallst);
+             else algorithm Error.addInternalError("Error occured when attempting JIT evaluation", sourceInfo()); then fail();
+         end match;
+         then (cache,newval);
     // try function interpretation
     case (cache,env, DAE.CALL(path = funcpath, attr = DAE.CALL_ATTR(builtin = false)), vallst, _, msg, _)
       equation
