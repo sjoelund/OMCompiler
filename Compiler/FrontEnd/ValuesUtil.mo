@@ -144,7 +144,7 @@ algorithm
     then DAE.T_METAARRAY(eltTp);
 
     case Values.META_BOX(_)
-  then DAE.T_METABOXED(valueExpType(inValue.value));
+	then DAE.T_METABOXED(valueExpType(inValue.value));
 
     case _
       equation
