@@ -434,7 +434,7 @@ algorithm
                                 exitId=GenBlockId());
     midfunc := MidToMid.longJmpGoto(midfunc);
   then ();
-  /*NOT COMPLETED TODO!:
+  /*TODO: Not completed
      Add more external languages and more options here. Needs to be completed.*/
   case SimCodeFunction.EXTERNAL_FUNCTION(name,extName,functionArguments,extArgs,extReturn,inVars,outVars,biVars,includes,_,"C",_,_,_)
   algorithm
@@ -1126,7 +1126,7 @@ algorithm
 
       stateTerminate(labelBody, MidCode.BRANCH(varCondition, labelBody, labelNext), state);
 
-      stateAddStmt(MidCode.ASSIGN(varCref, MidCode.VARIABLE(varIter)), state); //TODO: kan man slå ihop variabler?
+      stateAddStmt(MidCode.ASSIGN(varCref, MidCode.VARIABLE(varIter)), state);
       StmtsToMid(daestmtLst, state);
       stateTerminate(labelStep, MidCode.GOTO(labelStep), state);
 
@@ -1141,8 +1141,6 @@ algorithm
         algorithm
           Error.addInternalError("metatype error", sourceInfo());
         then fail();
-
-        //TODO Regular arrays. Make a function.
         case rangeTy as DAE.T_ARRAY(__)
         algorithm
           labelBody2 := GenBlockId();
@@ -1335,10 +1333,6 @@ algorithm
   end match;
 end unpackCrefFromExp;
 
-//TODO: stuff needs to be volatile for setjmp.
-//TODO: could handle match separately from matchcontinue and add more simplifications
-
-//TODO: returnering av värden verkar inte fungera???
 /*
 The term matchexpression is used to include both matchcontinue and match.
 */
@@ -1484,7 +1478,7 @@ algorithm
     midvar2 := RValueToVar(MidCode.BINARYOP(MidCode.EQUAL(),muxState, midvar),state);
     stateTerminate(labelFail, MidCode.BRANCH(midvar2, labelFail, labelOut),state);
 
-    stateTerminate(labelOut, MidCode.LONGJMP(),state); //J:TODO is this neccessary for the regular match case?
+    stateTerminate(labelOut, MidCode.LONGJMP(),state);
 
     caseLabelIterator := caseLabels;
 
@@ -1506,7 +1500,6 @@ algorithm
         then ();
         case (DAE.CASE(patterns=patterns,body=daeBody,patternGuard=patternGuard,result=caseResult)::cases) // note: modifies cases
         algorithm
-//        print("The patterns:"+anyString(patterns) + "\n");
           // first do checks and assignments
           // NOTE: If the guard fails we will have made pattern assignments for a failing case. This is how it was done before as far as I can tell.
           if matchContinue
@@ -2042,24 +2035,6 @@ algorithm
       else algorithm print("sscript to mid fail" + anyString(subscript) + "\n"); then fail();
   end match;
 end SubscriptToMid;
-
-function removeDuplicates
-  "Returns a list of the first argument, with all elements that are present in both lists removed"
-  input list<SimCodeFunction.Variable> l1;
-  input list<SimCodeFunction.Variable> l2;
-  output list<SimCodeFunction.Variable> l3;
-protected
-  DoubleEndedList<SimCodeFunction.Variable> l3Tmp = DoubleEndedList.fromList({});
-  list<SimCodeFunction.Variable> varsToIgnore;
-algorithm
-  varsToIgnore := List.intersectionOnTrue(l1,l2, MidCodeUtil.compareSimVars);
-  for simVar in l1 loop
-    if not List.isMemberOnTrue(simVar,varsToIgnore,MidCodeUtil.compareSimVars) then
-      DoubleEndedList.push_back(l3Tmp,simVar);
-    end if;
-  end for;
-  l3 := DoubleEndedList.toListAndClear(l3Tmp);
-end removeDuplicates;
 
 annotation(__OpenModelica_Interface="backendInterface");
 end DAEToMid;
