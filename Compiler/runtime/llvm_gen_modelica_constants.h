@@ -36,7 +36,7 @@
 #ifndef _LLVM_GEN_MODELICA_CONSTANTS_H
 #define _LLVM_GEN_MODELICA_CONSTANTS_H
 //Comment out for debug messages.
-#define DBG(...) //fprintf(stderr, __VA_ARGS__)
+#define DBG(...) fprintf(stderr, __VA_ARGS__)
 
 //Specifies how many bits we have for our integers in the enviroment.
 #define BITS 64 //Needs to be changed to be changed for different OS types.

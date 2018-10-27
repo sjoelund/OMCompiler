@@ -509,15 +509,17 @@ end genRNequal;
 
 function genAllocaInt
   "Allocates a variable called name with nBits on the stack. The variable will be saved in the symbol table
- in the llvm_gen context."
+ in the llvm_gen context. This is used to both generate booleans and integers"
   input String name;
   input Integer nBits;
-  external "C" allocaInt(name,nBits) annotation(Library = "omcruntime");
+  input Boolean isVolatile;
+  external "C" allocaInt(name,nBits,isVolatile) annotation(Library = "omcruntime");
 end genAllocaInt;
 
 function genAllocaModelicaReal
   input String name;
-  external "C" allocaDouble(name) annotation(Library = "omcruntime");
+  input Boolean isVolatile;
+  external "C" allocaDouble(name,isVolatile) annotation(Library = "omcruntime");
 end genAllocaModelicaReal;
 
 function genAllocaModelicaMetaTy

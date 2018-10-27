@@ -79,12 +79,17 @@ extern "C"
   struct Program;
   class IntermediateValMngr;
   struct FunctionPrototype;
-  Program *program=nullptr;
+  Program *program = nullptr;
 
-  //IMPORTANT TODO have these in the symbol table, needed for complete push/popjmp impl
-  struct Variable {
-    llvm::AllocaInst *alloci;
-    bool isVolatile;
+  class Variable {
+  private:
+    llvm::AllocaInst *m_alloci;
+    const bool m_isVolatile;
+  public:
+    Variable(llvm::AllocaInst *alloci, const bool &isVolatile) :
+      m_alloci{alloci}, m_isVolatile{isVolatile} {}
+    bool isVolatile() const {return m_isVolatile;}
+    llvm::AllocaInst *getAllocaInst() {return m_alloci;}
   };
   /*
     This class contains Intermediate values, used to store variables that
@@ -138,6 +143,7 @@ extern "C"
     std::unique_ptr<FunctionPrototype> prototype;
     /*For looking up variables*/
     std::map<std::string,llvm::AllocaInst*> symTab;
+    std::map<std::string,std::unique_ptr<Variable>> symTab2;
     /*For looking up basic block, (they are NOT ordered in a linear fashion in Midcode).*/
     std::map<std::string,llvm::BasicBlock*> blockMap;
     /*For function calls*/
@@ -161,7 +167,6 @@ extern "C"
 
   struct Program {
     const std::string name;
-
     /*Used for temporary storage for generating llvmStrArrays.*/
     std::vector<std::string> llvmStrArray;
     /*Constants used to create a global struct */
@@ -177,11 +182,11 @@ extern "C"
     std::unique_ptr<llvm::Module> module;
     /*For per function optimisations*/
     std::unique_ptr<llvm::legacy::FunctionPassManager> functionPassMngr;
-    /* For interprodecdual optimisations, Experimental*/
+    /* For interprodecdual optimisations. Experimental*/
     llvm::legacy::PassManager ipoPassMngr;
     std::unique_ptr<llvm::orc::OMCJIT> jit;
     modelica_boolean shallOptimize;
-    /*fp to the top level expression*/
+    /*function pointer to the top level expression*/
     modelica_metatype (*top_level_func)(modelica_metatype);
 
     //Creates the module and sets the pass mananger.

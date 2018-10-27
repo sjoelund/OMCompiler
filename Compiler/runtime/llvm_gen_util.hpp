@@ -46,14 +46,21 @@ extern "C"
     fetch l,r,d from the symbol table.
     For lhs and rhs the corresponding load instructions are created.
   */
-  void binopInit(llvm::StringRef lhs, llvm::StringRef rhs,
-                 llvm::StringRef dest,llvm::Value *&l, llvm::Value *&r, llvm::Value *&d)
+  void binopInit(const char *lhs, const char *rhs, const char *dest,
+                 llvm::Value *&l, llvm::Value *&r, llvm::Value *&d)
   {
-    l = program->currentFunc->symTab[lhs];
-    r = program->currentFunc->symTab[rhs];
-    d = program->currentFunc->symTab[dest];
-    l = program->builder.CreateLoad(l,l->getName());
-    r = program->builder.CreateLoad(r,r->getName());
+    DBG("Calling binop init\n");
+    Variable *leftVariable = program->currentFunc->symTab2[lhs].get();
+    Variable *rightVariable = program->currentFunc->symTab2[rhs].get();
+    Variable *destVariable = program->currentFunc->symTab2[dest].get();
+    DBG("Creating load instructions\n");
+
+    l = leftVariable->getAllocaInst();
+    r = rightVariable->getAllocaInst();
+    d = destVariable->getAllocaInst();
+
+    l = program->builder.CreateLoad(l, leftVariable->isVolatile(), lhs);
+    r = program->builder.CreateLoad(r, rightVariable->isVolatile(), rhs);
   }
 
   llvm::Type *getLLVMType(const uint8_t type,const char* structName="")
@@ -111,14 +118,15 @@ extern "C"
   /*For debugging. Print all keys in the symbol table */
   void printSymbolTable() {
     fprintf(stderr,"Keys in symbol table:\n");
-    for(const auto &p : program->currentFunc->symTab) {
+    for(const auto &p : program->currentFunc->symTab2) {
       fprintf(stderr,"%s\n",p.first.c_str());
     }
     fprintf(stderr,"\n");
   }
+
   /*Helper function to create the different kinds of alloca instructions.
     Also referenced in createFunctionBody */
-  llvm::AllocaInst *createAllocaInst(llvm::StringRef name,llvm::Type *type)
+  llvm::AllocaInst *createAllocaInst(llvm::StringRef name, llvm::Type *type)
   {
     DBG("create allocaInst for:%s\n",name,__LINE__);
     llvm::AllocaInst *ai {program->builder.CreateAlloca(type,0,name)};
@@ -142,8 +150,9 @@ extern "C"
   llvm::Value *createLoadInst(const char *dest)
   {
     DBG("Create load instruction with dest:%s\n line %d of file \"%s\".\n",dest,__LINE__, __FILE__);
-    llvm::AllocaInst *ai {program->currentFunc->symTab[dest]};
-    llvm::LoadInst *li = program->builder.CreateLoad(ai,ai->getName());
+    Variable *destVar {program->currentFunc->symTab2[dest].get()};
+    llvm::AllocaInst* ai = destVar->getAllocaInst();
+    llvm::LoadInst *li = program->builder.CreateLoad(ai, destVar->isVolatile(), ai->getName());
     li->setAlignment(ai->getAlignment());
     DBG("Load instruction created\n");
     return li;
@@ -152,13 +161,14 @@ extern "C"
   void createStoreInst(llvm::Value* val, const char *dest)
   {
     DBG("Create store instruction with dest:%s line %d of file \"%s\".\n",dest,__LINE__, __FILE__);
-    llvm::AllocaInst *ai {program->currentFunc->symTab[dest]};
+    Variable *variable {program->currentFunc->symTab2[dest].get()};
+    llvm::AllocaInst *ai {variable->getAllocaInst()};
     if (!ai) {
       fprintf(stderr,"No variable named:%s in symboltable\n",dest);
       printSymbolTable();
-      ai = program->currentFunc->symTab[dest];
+      return;
     }
-    llvm::StoreInst *si {program->builder.CreateStore(val,ai)};
+    llvm::StoreInst *si {program->builder.CreateStore(val,ai,variable->isVolatile())};
     si->setAlignment(ai->getAlignment());
   }
 
@@ -185,7 +195,8 @@ extern "C++"
   int castXTypeToYType(const char *src, const char *dest,llvm::Type* ty, Func irBuilderFunc)
   {
     DBG("CallingXTypeToYType\n");
-    llvm::Value *s {program->currentFunc->symTab[src]};
+    Variable *variable {program->currentFunc->symTab2[src].get()};
+    llvm::Value *s {variable->getAllocaInst()};
     s = program->builder.CreateLoad(s,s->getName());
     DBG("Invoking builder instruction\n");
     llvm::Value *res { irBuilderFunc(s,ty) };

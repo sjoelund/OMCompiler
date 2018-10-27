@@ -231,9 +231,10 @@ int createBranch(const char *conditionVar, const modelica_integer onTrue, const 
   std::string onFalseLabel{"label_" + std::to_string(onFalse)};
 
   llvm::Function *f {program->module->getFunction(program->currentFunc->getName())};
-  llvm::Value *cond {program->currentFunc->symTab[conditionVar]};
+  Variable *condVariable {program->currentFunc->symTab2[conditionVar].get()};
+  llvm::Value *cond {condVariable->getAllocaInst()};
 
-  cond = program->builder.CreateLoad(cond,cond->getName());
+  cond = program->builder.CreateLoad(cond, condVariable->isVolatile(), cond->getName());
 
   llvm::BasicBlock *onTrueBB;
   llvm::BasicBlock *onFalseBB;
@@ -350,9 +351,7 @@ int createFunctionBody(const char *name)
     llvm::AllocaInst *ai {createAllocaInst(a.getName(),a.getType())};
     llvm::StoreInst *si{program->builder.CreateStore(&a,ai)};
     si->setAlignment(ai->getAlignment());
-
-    //TODO Check for dublicates here, Simon said scopes are not fully working... some hack might be needed in future work, e.g remove all blocks and do renaming.
-    program->currentFunc->symTab[a.getName()] = ai;
+    program->currentFunc->symTab2[a.getName()] = llvm::make_unique<Variable>(ai,false);
   }
 
   return 0;
@@ -364,12 +363,10 @@ int createCallArgAddr(const char *name)
   DBG("Create callArgAddr name:%s line: %d of file:%s\n",name,__LINE__,__FILE__);
   /* First look for a global with that name, then look at the per function symtab */
   if (program->globalConstants.count(name)) {
-    DBG("1\n");
     program->currentFunc->callArgs.push_back(program->globalConstants[name]);
     return 0;
-  } else if (program->currentFunc->symTab.count(name)) {
-    DBG("2\n");
-    program->currentFunc->callArgs.push_back(program->currentFunc->symTab[name]);
+  } else if (program->currentFunc->symTab2.count(name)) {
+    program->currentFunc->callArgs.push_back(program->currentFunc->symTab2[name]->getAllocaInst());
     return 0;
   }
 
@@ -495,34 +492,28 @@ int createLongJmp()
  type casts had to be made each time a lib function was to be called.
  The createAllocaInst is defined in llvm_gen_util.hpp, it can be extended to force allocation of x bytes for the different types.
 */
-int allocaInt(const char *name, const uint8_t nBits)
+int allocaInt(const char *name, const uint8_t nBits, const bool isVolatile)
 {
   llvm::AllocaInst *alloci{createAllocaInst(name,llvm::Type::getIntNTy(program->context,nBits))};
-  program->currentFunc->symTab[alloci->getName()] = alloci;
+  program->currentFunc->symTab2[alloci->getName()] = llvm::make_unique<Variable>(alloci,isVolatile);
   return 0;
 }
 
 /*Allocates a modelica real, a double in LLVM IR*/
-int allocaDouble(const char *name)
+int allocaDouble(const char *name, const bool isVolatile)
 {
   llvm::AllocaInst *alloci{createAllocaInst(name,getLLVMType(MODELICA_REAL))};
-  program->currentFunc->symTab[alloci->getName()] = alloci;
+  program->currentFunc->symTab2[alloci->getName()] = llvm::make_unique<Variable>(alloci,isVolatile);
   return 0;
 }
-/* Booleans are represented as a i1 (1 bit integer)*/
-int allocaBoolean(const char *name)
-{
-  llvm::AllocaInst *alloci{createAllocaInst(name,getLLVMType(MODELICA_BOOLEAN))};
-  program->currentFunc->symTab[alloci->getName()] = alloci;
-  return 0;
-}
+
 /*For modelica_metatype and so forth 8 bits in size, however they will function as void pointers to differentiate
   between pointers to concrete types.
 */
 int allocaInt8PtrTy(const char *name)
 {
   llvm::AllocaInst *alloci{createAllocaInst(name,getLLVMType(MODELICA_METATYPE))};
-  program->currentFunc->symTab[alloci->getName()] = alloci;
+  program->currentFunc->symTab2[alloci->getName()] = llvm::make_unique<Variable>(alloci,false);
   return 0;
 }
 
@@ -530,7 +521,7 @@ int allocaInt8PtrTy(const char *name)
 int allocaInt8PtrPtrTy(const char * name)
 {
   llvm::AllocaInst *alloci{createAllocaInst(name,getLLVMType(MODELICA_METATYPE_PTR))};
-  program->currentFunc->symTab[alloci->getName()] = alloci;
+  program->currentFunc->symTab2[alloci->getName()] = llvm::make_unique<Variable>(alloci,false);
   return 0;
 }
 
@@ -538,8 +529,9 @@ int allocaInt8PtrPtrTy(const char * name)
 int createStoreVarInst(const char *src, const char *dest)
 {
   DBG("Calling store var instruction src:%s to dest:%s \n",src,dest);
-  llvm::AllocaInst *s {program->currentFunc->symTab[src]};
-  llvm::Value *lv {program->builder.CreateLoad(s,s->getName())};
+  Variable *srcVariable { program->currentFunc->symTab2[src].get() };
+  llvm::AllocaInst *s {srcVariable->getAllocaInst()};
+  llvm::Value *lv {program->builder.CreateLoad(s, srcVariable->isVolatile(), s->getName())};
   createStoreInst(lv,dest);
   return 0;
 }
@@ -554,13 +546,14 @@ int createStoreVarInst(const char *src, const char *dest)
 int createStoreToPtr(const char *src, const char *dest)
 {
   DBG("Calling createStoreToPTR\n");
-  llvm::Value *s {program->currentFunc->symTab[src]};
-  llvm::Value *d {program->currentFunc->symTab[dest]};
-  s = program->builder.CreateLoad(s,s->getName());
-  d = program->builder.CreateLoad(d,d->getName());
-  //TODO handle alignment here...
-  program->builder.CreateStore(s,d);
+  Variable *srcVariable { program->currentFunc->symTab2[src].get() };
+  Variable *destVariable { program->currentFunc->symTab2[dest].get() };
 
+  llvm::Value *s {srcVariable->getAllocaInst()};
+  llvm::Value *d {destVariable->getAllocaInst()};
+  s = program->builder.CreateLoad(s, srcVariable->isVolatile() ,s->getName());
+  d = program->builder.CreateLoad(d, destVariable->isVolatile() ,d->getName());
+  program->builder.CreateStore(s, d, srcVariable->isVolatile() || destVariable->isVolatile());
   return 0;
 }
 
@@ -604,7 +597,7 @@ int storeLiteralIntForPtrTy(const std::uintptr_t addr,const char *dest)
   const int sizeOfPtrInBits = 64; //Might need a different constant for a different system.
   llvm::Value *ival {llvm::ConstantInt::get(llvm::Type::getIntNTy(program->context,sizeOfPtrInBits),addr, /*Not signed.*/ false)};
   llvm::Value *pval {program->builder.CreateIntToPtr(ival,llvm::Type::getInt8PtrTy(program->context),"pointerTMP")};
-  //program->builder.CreateStore(pval,program->currentFunc->symTab[dest]);
+  //program->builder.CreateStore(pval,program->currentFunc->symTab2[dest]);
   createStoreInst(pval,dest);
   return 0;
 }
@@ -622,16 +615,9 @@ int storeThreadData_t(void *threadData,const char *threadDataID)
 int createReturn(const char *retVar)
 {
   DBG("Calling create return with retVariable: %s \n",retVar);
-  llvm::Value *ret = program->currentFunc->symTab[retVar];
-  ret = program->builder.CreateLoad(ret,ret->getName());
-  program->builder.CreateRet(ret);
-  return 0;
-}
-/*Handles returns for functions returning n variables, n = 2...*/
-int createReturnMRV(const char *structName)
-{
-  llvm::Value *ret = program->currentFunc->symTab[structName];
-  ret = program->builder.CreateLoad(ret,ret->getName());
+  Variable *returnVariable { program->currentFunc->symTab2[retVar].get() };
+  llvm::Value *ret = returnVariable->getAllocaInst();
+  ret = program->builder.CreateLoad(ret, returnVariable->isVolatile(), ret->getName());
   program->builder.CreateRet(ret);
   return 0;
 }
@@ -655,8 +641,9 @@ int createReturnZero()
 int createIUminus(const char *src, const char *dest)
 {
   DBG("Creating i64 Uminus\n");
-  llvm::Value *s {program->currentFunc->symTab[src]};
-  s = program->builder.CreateLoad(s,s->getName());
+  Variable *srcVariable { program->currentFunc->symTab2[src].get() };
+  llvm::Value *s { srcVariable->getAllocaInst()  };
+  s = program->builder.CreateLoad(s, srcVariable->isVolatile(), s->getName());
   s = program->builder.CreateNeg(s,"negI64temp");
   createStoreInst(s,dest);
   return 0;
@@ -665,8 +652,9 @@ int createIUminus(const char *src, const char *dest)
 int createDUminus(const char *src, const char *dest)
 {
   DBG("Creating DUminus\n");
-  llvm::Value *s {program->currentFunc->symTab[src]};
-  s = program->builder.CreateLoad(s,s->getName());
+  Variable *srcVariable { program->currentFunc->symTab2[src].get() };
+  llvm::Value *s {srcVariable->getAllocaInst()};
+  s = program->builder.CreateLoad(s, srcVariable->isVolatile(), s->getName());
   s = program->builder.CreateFNeg(s,"negDtemp");
   createStoreInst(s,dest);
   return 0;
@@ -675,8 +663,9 @@ int createDUminus(const char *src, const char *dest)
 int createNot(const char *src, const char *dest)
 {
   DBG("Creating  NOT\n");
-  llvm::Value *s {program->currentFunc->symTab[src]};
-  s = program->builder.CreateLoad(s,s->getName());
+  Variable *srcVariable {program->currentFunc->symTab2[src].get()};
+  llvm::Value *s {srcVariable->getAllocaInst()};
+  s = program->builder.CreateLoad(s, srcVariable->isVolatile(), s->getName());
   s = program->builder.CreateNot(s,"notTmp");
   createStoreInst(s,dest);
   return 0;
@@ -705,20 +694,26 @@ int createIntToBool(const char *src, const char *dest)
 {
   // auto f {std::bind(&llvm::IRBuilder<>::CreateIntCast,&program->builder,_1,_2,true,"intToBool")};
   DBG("Calling createIntToBool with %s %s\n",src,dest);
-  llvm::Value *s {program->currentFunc->symTab[src]};
-  llvm::Value *d {program->currentFunc->symTab[dest]};
+  Variable *srcVariable {program->currentFunc->symTab2[src].get()};
+  Variable *destVariable {program->currentFunc->symTab2[dest].get()};
+
+  llvm::Value *s {srcVariable->getAllocaInst()};
+  llvm::Value *d {destVariable->getAllocaInst()};
   llvm::Value *res {program->builder.CreateIntCast(s,llvm::Type::getInt1Ty(program->context),true,"intToBoolTmp")};
-  program->builder.CreateStore(res,d);
+  program->builder.CreateStore(res,d,srcVariable->isVolatile() || destVariable->isVolatile());
   return 0;
 }
 
 int createBoolToInt(const char *src, const char *dest)
 {
   DBG("Calling createBoolToInt\n");
-  llvm::Value *s {program->currentFunc->symTab[src]};
-  llvm::Value *d {program->currentFunc->symTab[dest]};
+  Variable *srcVariable {program->currentFunc->symTab2[src].get()};
+  Variable *destVariable {program->currentFunc->symTab2[dest].get()};
+
+  llvm::Value *s {srcVariable->getAllocaInst()};
+  llvm::Value *d {destVariable->getAllocaInst()};
   llvm::Value *res {program->builder.CreateIntCast(s,llvm::Type::getInt64Ty(program->context),true,"boolToIntTmp")};
-  program->builder.CreateStore(res,d);
+  program->builder.CreateStore(res ,d, srcVariable->isVolatile() || destVariable->isVolatile());
   return 0;
 }
 
@@ -875,7 +870,7 @@ int createINequal(const char *lhs, const char *rhs,const char *dest)
 /*For modelica_Reals */
 int createDAdd(const char *lhs, const char *rhs, const char *dest)
 {
-  DBG("Calling createDAddwith: lhs=%s and rhs=%s\n",lhs,rhs);
+  DBG("Calling createDAddwith: lhs=%s and rhs=%s dest=%s\n",lhs,rhs,dest);
   llvm::Value *l,*r,*d;
   binopInit(lhs,rhs,dest,l,r,d);
   llvm::Value *res{program->builder.CreateFAdd(l,r,"addDtmp")};
@@ -895,7 +890,7 @@ int createDSub(const char *lhs, const char *rhs, const char *dest)
 
 int createDMul(const char *lhs, const char *rhs, const char *dest)
 {
-  DBG("Calling createDMul with: lhs=%s and rhs=%s\n",lhs,rhs);
+  DBG("Calling createDMul with: lhs=%s and rhs=%s\n",lhs,rhs,dest);
   llvm::Value *l,*r,*d;
   binopInit(lhs,rhs,dest,l,r,d);
   llvm::Value *res{program->builder.CreateFMul(l,r,"mulDtmp")};
@@ -1052,8 +1047,9 @@ int createLst(const char *lstName)
 {
   DBG("CreateMmcCons\n");
   //Assign the value of the pointer that points to lstName in the symbol table to
-  llvm::Value *lst {program->currentFunc->symTab[lstName]};
-  program->builder.CreateStore(cdr,lst);
+  Variable *lstVariable { program->currentFunc->symTab2[lstName].get() };
+  llvm::Value *lst {lstVariable->getAllocaInst()};
+  program->builder.CreateStore(cdr,lst,lstVariable->isVolatile());
   return 0;
 }
 //TODO refactor this...
@@ -1066,9 +1062,10 @@ int createMmcCons(const char *carElement /*This refeers to a mmc already created
   /*Creates the first, (really last cell) ugly special case.*/
   if (!cdr) {
     /*Load the carElement*/
-    llvm::Value *ce {program->currentFunc->symTab[carElement]};
+    Variable *carElementVariable { program->currentFunc->symTab2[carElement].get() };
+    llvm::Value *ce = carElementVariable->getAllocaInst();
     /*Load instruction to set the alignment*/
-    llvm::LoadInst *ceL = program->builder.CreateLoad(ce,ce->getName());
+    llvm::LoadInst *ceL = program->builder.CreateLoad(ce, carElementVariable->isVolatile(), ce->getName());
     ceL->setAlignment(8);
     ce = ceL;
     std::vector<llvm::Value*> args {ce};
@@ -1086,8 +1083,9 @@ int createMmcCons(const char *carElement /*This refeers to a mmc already created
     return 0;
   }
   /*The other case when we have a cdr.*/
-  llvm::Value *ce {program->currentFunc->symTab[carElement]};
-  llvm::LoadInst *ceL {program->builder.CreateLoad(ce,ce->getName())};
+  Variable *carElementVariable { program->currentFunc->symTab2[carElement].get() };
+  llvm::Value *ce { carElementVariable->getAllocaInst() };
+  llvm::LoadInst *ceL { program->builder.CreateLoad(ce ,carElementVariable->isVolatile() ,ce->getName()) };
   ceL->setAlignment(8);
   ce = ceL;
 
@@ -1098,8 +1096,10 @@ int createMmcCons(const char *carElement /*This refeers to a mmc already created
   f = program->module->getFunction("mmc_mk_cons_wrapper");
 
   if (!f) {
-    f = llvm::Function::Create(ft,llvm::Function::ExternalLinkage,
-                               "mmc_mk_cons_wrapper", program->module.get());
+    f = llvm::Function::Create(ft,
+                               llvm::Function::ExternalLinkage
+                               ,"mmc_mk_cons_wrapper"
+                               ,program->module.get());
   }
 
   cdr  = program->builder.CreateCall(f,args);
@@ -1153,7 +1153,7 @@ int createStruct(const char *structName)
   llvm::AllocaInst *structAi{createAllocaInst(structName,sType)};
 
   DBG("after call to createAllocaInst\n");
-  program->currentFunc->symTab[structName] = structAi;
+  program->currentFunc->symTab2[structName] = llvm::make_unique<Variable>(structAi,false);
   return 0;
 }
 
@@ -1234,14 +1234,15 @@ int createStoreDVarToPtr(const char *src,const char *dest,const uint8_t idx0)
 /*Fetches a double from an array and stores it at the variable dest.*/
 int createGetDoubleFromPtr(const char *src,const char *dest,const uint8_t idx0)
 {
-  llvm::Value *dV {program->currentFunc->symTab[dest]};
+  Variable *doubleVariable {program->currentFunc->symTab2[dest].get()};
+  llvm::Value *dV {doubleVariable->getAllocaInst()};
   llvm::Value *vIdx0 {llvm::ConstantInt::get(llvm::Type::getInt32Ty(program->context),idx0,false)};
   llvm::Value *sV = createLoadInst(src);
   llvm::Value *gep{program->builder.CreateInBoundsGEP(sV,vIdx0,"geptmp")};
   gep = program->builder.CreateBitCast(gep,llvm::Type::getDoublePtrTy(program->context));
   llvm::LoadInst *li = program->builder.CreateLoad(gep);
   li->setAlignment(8);
-  program->builder.CreateStore(li,dV);
+  program->builder.CreateStore(li,dV,doubleVariable->isVolatile());
   return 0;
 }
 
@@ -1250,7 +1251,8 @@ int createGetDoubleFromPtr(const char *src,const char *dest,const uint8_t idx0)
 int createStoreToStruct(const char *varName,const char *structName,const uint8_t idx0,const uint8_t idx1)
 {
   DBG("Calling createStoreToStruct varName:%s to struct:%s",varName,structName);
-  llvm::Value *sv {program->currentFunc->symTab[structName]};
+  Variable *structVariable { program->currentFunc->symTab2[structName].get() };
+  llvm::Value *sv {structVariable->getAllocaInst()};
 
   if (!sv) {
     fprintf(stderr,"Error no struct named:%s\n",structName);
@@ -1262,11 +1264,11 @@ int createStoreToStruct(const char *varName,const char *structName,const uint8_t
   llvm::Value *vIdx1 {llvm::ConstantInt::get(llvm::Type::getInt32Ty(program->context),idx1, false)};
   /*Indices for the GEP instruction*/
   std::vector<llvm::Value*> indexVec {vIdx0,vIdx1};
-
-  llvm::Value *retVar{program->currentFunc->symTab[varName]};
+  Variable *retVariable { program->currentFunc->symTab2[varName].get() };
+  llvm::Value *retVar{retVariable->getAllocaInst()};
   retVar = createLoadInst(varName);
   llvm::Value *structElem {program->builder.CreateInBoundsGEP(sv,indexVec,"gepTmp")};
-  program->builder.CreateStore(retVar,structElem);
+  program->builder.CreateStore(retVar,structElem,retVariable->isVolatile());
 
   return 0;
 }
@@ -1274,7 +1276,8 @@ int createStoreToStruct(const char *varName,const char *structName,const uint8_t
 /*Takes a value from the struct and store it at the variable that is referenced by varName*/
 int createStoreFromStruct(const char *varName,const char *structName,const uint8_t idx0,const uint8_t idx1)
 {
-  llvm::AllocaInst *sv {program->currentFunc->symTab[structName]};
+  Variable *sourceVariable {program->currentFunc->symTab2[structName].get()};
+  llvm::AllocaInst *sv {sourceVariable->getAllocaInst()};
 
   if (!sv) {
     fprintf(stderr
@@ -1295,8 +1298,9 @@ int createStoreFromStruct(const char *varName,const char *structName,const uint8
   structElemL->setAlignment(sv->getAlignment());
   structElem = structElemL;
   /*Create the variable we store the value from the struct to.*/
-  llvm::Value *var{program->currentFunc->symTab[varName]};
-  structElem = program->builder.CreateStore(structElem,var);
+  Variable *variable { program->currentFunc->symTab2[varName].get() };
+  llvm::Value *var { variable->getAllocaInst() };
+  structElem = program->builder.CreateStore(structElem,var,sourceVariable->isVolatile());
 
   return 0;
 }

@@ -409,7 +409,6 @@ algorithm
       algorithm
         EXT_LLVM.genCall(name="mmc_scon_to_value_wrapper",functionTy=MODELICA_METATYPE,dest=resultVar,assignment=true,isVariadic=false);
       then();
-  /*TODO, add these if Martin deems it neccessary.. */
     case DAE.T_ENUMERATION(__) then ();
     case DAE.T_COMPLEX(__) then ();
     case DAE.T_METAUNIONTYPE(__) then();
@@ -552,9 +551,9 @@ algorithm
 //  print("GenAllocaLLVMInstForVar\n");
   ty := var.ty;
   () := match ty
-    case DAE.T_INTEGER(__) algorithm EXT_LLVM.genAllocaInt(genVarName(var),bitWidth); then();
-    case DAE.T_REAL(__) algorithm EXT_LLVM.genAllocaModelicaReal(genVarName(var)); then();
-    case DAE.T_BOOL(__) algorithm EXT_LLVM.genAllocaInt(genVarName(var),1); then();
+    case DAE.T_INTEGER(__) algorithm EXT_LLVM.genAllocaInt(genVarName(var),bitWidth,var.volatile); then();
+    case DAE.T_REAL(__) algorithm EXT_LLVM.genAllocaModelicaReal(genVarName(var),var.volatile); then();
+    case DAE.T_BOOL(__) algorithm EXT_LLVM.genAllocaInt(genVarName(var),1,var.volatile); then();
     case DAE.T_ARRAY(__)
       algorithm
           //Allocate the pointer to the base of the struct.
@@ -731,12 +730,11 @@ algorithm
         EXT_LLVM.genCallArgMmcJumpr();
         EXT_LLVM.genCallArgConstInt(1);
         EXT_LLVM.genLongJmp();
-        //Dummy terminator,it will never be executed, but it is needed for correct LLVM-IR (LLVM will remove it during opt).
+        //Dummy terminator, it is needed for correct LLVM-IR (LLVM will remove it during opt).
         EXT_LLVM.genGoto(func.exitId);
       then();
-    case MidCode.PUSHJMP(__) //TODO
+    case MidCode.PUSHJMP(__)
       algorithm
-//        print("The value as of pushJMP "+anyString(term.old_buf.name) + "\n");
         EXT_LLVM.genStoreFromMmcJumpr(term.old_buf.name);
         EXT_LLVM.genCallArg(term.new_buf.name); //Pass the adress.
         EXT_LLVM.genCall(name="set_mmc_jumper",functionTy=MODELICA_VOID,dest="",assignment=false,isVariadic=false);
@@ -754,7 +752,6 @@ algorithm
   end match;
 end genTerminator;
 
-//TODO refactor this mess...
 function genCall
   "Generates an llvm, call instruction, observe that a call is a terminator in MidCode, but not
    a terminator in LLVM IR. The arguments for this functions must have been created before this function is called."

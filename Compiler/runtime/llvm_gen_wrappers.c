@@ -383,7 +383,7 @@ jmp_buf *get_mmc_jumper()
 jmp_buf *alloc_get_jmp_buf()
 {
   DBG("Allocating JMP_BUF\n");
-  jmp_buf *jb = malloc(sizeof(jmp_buf)); //TODO replace with gc call.
+  jmp_buf *jb = GC_MALLOC(sizeof(jmp_buf));
   DBG("Returning jmp_buf:%p\n",jb);
   return jb;
 }
@@ -1010,8 +1010,7 @@ modelica_integer arrayLength_jit(modelica_metatype arr)
 modelica_metatype alloc_base_array_t_jit()
 {
   base_array_t *arr;
-  /* Memory leak, GC_MALLOC gave some problems */
-  arr = malloc(sizeof(arr));
+  arr = GC_MALLOC(sizeof(arr));
   return arr;
 }
 
