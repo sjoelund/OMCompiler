@@ -3471,7 +3471,7 @@ author:Waurich TUD 2014-10"
 algorithm
   fTreeOut := matchcontinue(fTreeIn)
     local
-      list<tuple<DAE.AvlTreePathFunction.Key,DAE.AvlTreePathFunction.Value>> funcLst;
+      list<tuple<DAE.AvlTreePathFunction.Key,Option<DAE.Function>>> funcLst;
       DAE.FunctionTree funcs;
   case(_)
     equation
@@ -3487,8 +3487,8 @@ end renameFunctionParameter;
 
 protected function renameFunctionParameter1"
 author:Waurich TUD 2014-10"
-  input tuple<DAE.AvlTreePathFunction.Key,DAE.AvlTreePathFunction.Value> funcIn;
-  output tuple<DAE.AvlTreePathFunction.Key,DAE.AvlTreePathFunction.Value> funcOut;
+  input tuple<DAE.AvlTreePathFunction.Key, Option<DAE.Function>> funcIn;
+  output tuple<DAE.AvlTreePathFunction.Key, Option<DAE.Function>> funcOut;
 algorithm
   funcOut := matchcontinue(funcIn)
     local

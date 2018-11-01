@@ -3824,7 +3824,7 @@ public function getFunctionList
   input Boolean failOnError=false;
   output list<DAE.Function> fns;
 protected
-  list<tuple<DAE.AvlTreePathFunction.Key,DAE.AvlTreePathFunction.Value>> lst, lstInvalid;
+  list<tuple<DAE.AvlTreePathFunction.Key,Option<DAE.Function>>> lst, lstInvalid;
   String str;
 algorithm
   try
@@ -3850,7 +3850,7 @@ algorithm
 end getFunctionNames;
 
 protected function isInvalidFunctionEntry
-  input tuple<DAE.AvlTreePathFunction.Key,DAE.AvlTreePathFunction.Value> tpl;
+  input tuple<DAE.AvlTreePathFunction.Key,Option<DAE.Function>> tpl;
   output Boolean b;
 algorithm
   b := match tpl
@@ -3860,7 +3860,7 @@ algorithm
 end isInvalidFunctionEntry;
 
 protected function isValidFunctionEntry
-  input tuple<DAE.AvlTreePathFunction.Key,DAE.AvlTreePathFunction.Value> tpl;
+  input tuple<DAE.AvlTreePathFunction.Key,Option<DAE.Function>> tpl;
   output Boolean b;
 algorithm
   b := not isInvalidFunctionEntry(tpl);
@@ -3890,10 +3890,9 @@ end traverseDAE;
 protected function traverseDAEFuncHelper<ArgT>
   "Helper function to traverseDae. Traverses the functions."
   input DAE.AvlTreePathFunction.Key key;
-  input output DAE.AvlTreePathFunction.Value value;
+  input output Option<DAE.Function> value;
   input FuncExpType func;
   input output ArgT arg;
-
   partial function FuncExpType
     input output DAE.Exp exp;
     input output ArgT arg;
@@ -5638,7 +5637,7 @@ public function getFunctionsInfo
 algorithm
   strs := match ft
     local
-      list<tuple<DAE.AvlTreePathFunction.Key,DAE.AvlTreePathFunction.Value>> lst;
+      list<tuple<DAE.AvlTreePathFunction.Key,Option<DAE.Function>>> lst;
 
     case _
       equation
@@ -5652,7 +5651,7 @@ end getFunctionsInfo;
 
 
 public function getInfo
-  input tuple<DAE.AvlTreePathFunction.Key,DAE.AvlTreePathFunction.Value> tpl;
+  input tuple<DAE.AvlTreePathFunction.Key,Option<DAE.Function>> tpl;
   output String str;
 algorithm
   str := match tpl

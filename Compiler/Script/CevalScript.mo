@@ -2266,7 +2266,7 @@ public function cevalCallFunction "This function evaluates CALL expressions, i.e
   input Integer numIter;
   output FCore.Cache outCache;
   output Values.Value outValue;
-algorithm
+  algorithm
   (outCache,outValue) := matchcontinue (inCache,inEnv,inExp,inValuesValueLst,impl,inMsg,numIter)
     local
       Values.Value newval;
@@ -2363,7 +2363,7 @@ algorithm
 end cevalCallFunction;
 
 protected
-//Added imports
+//Imports for MidCode->SimCode->LLVM IR
 import SimCodeFunctionUtil;
 import DAEToMid;
 import MidToLLVM;
@@ -2464,10 +2464,12 @@ algorithm
       list<SimCodeFunction.Function> simfns "SimCode translation of daeElements.";
       list<SimCodeFunction.RecordDeclaration> recordDecls "Record declarations";
       list<String> includes, libs, libPaths,includeDirs "Includes, libs etc.";
-	  list<MidCode.Function> midFuncs "MidCode IR representation of these functions.";
+      list<MidCode.Function> midFuncs "MidCode IR representation of these functions.";
+     //try jit compilation with LLVM
      case (cache,env, DAE.CALL(path = funcpath, attr = DAE.CALL_ATTR(builtin = false)), vallst, _, msg, _)
        guard Flags.isSet(Flags.JIT_EVAL_FUNC)
        algorithm
+         failure(cevalIsExternalObjectConstructor(cache,funcpath,env,msg));
          execStatReset(); //Start measuring JIT compile time.
          p := SymbolTable.getAbsyn();
          name := generateFunctionName(funcpath);
@@ -2475,15 +2477,13 @@ algorithm
          /* Translate DAE to SimCode */
          (daeElements,literals) := SimCodeFunctionUtil.findLiterals(daeMainFunction::daeElements);
          (simMainFunction::simfns, recordDecls, includes, includeDirs, libs, libPaths) := SimCodeFunctionUtil.elaborateFunctions(p, daeElements, metarecordTypes, literals, {});
-         //Might be redudant...
-         SimCodeFunctionUtil.checkValidMainFunction(name,simMainFunction);
          /*Generate MidCode IR*/
          midFuncs := DAEToMid.DAEFunctionsToMid(simMainFunction::simfns);
          /* Set up the neccessary data structures in the LLVM context. */
          EXT_LLVM.initGen(name);
          MidToLLVM.genRecordDecls(recordDecls);
          /*Generate LLVM IR in memory*/
-         MidToLLVM.genProgram(MidCode.PROGRAM(name,midFuncs));
+         MidToLLVM.genProgram(MidCode.PROGRAM(name, midFuncs));
          /*JIT compile. Return a newval.*/
          newval := match midFuncs
            local MidCode.Function H "The 'main' function. The top level expression calls it"; List<MidCode.Function> T = {};
@@ -2496,7 +2496,7 @@ algorithm
       equation
         true = Flags.isSet(Flags.EVAL_FUNC);
         failure(cevalIsExternalObjectConstructor(cache, funcpath, env, msg));
-        // bcall1(Flags.isSet(Flags.DYN_LOAD), print,"[dynload]: try constant evaluation: " + Absyn.pathString(funcpath) + "\n");
+         // bcall1(Flags.isSet(Flags.DYN_LOAD), print,"[dynload]: try constant evaluation: " + Absyn.pathString(funcpath) + "\n");
         (cache,
          sc as SCode.CLASS(partialPrefix = SCode.NOT_PARTIAL()),
          env) = Lookup.lookupClass(cache, env, funcpath);
@@ -2509,7 +2509,7 @@ algorithm
           Prefix.NOPRE(),
           sc,
           {});
-        func = FCore.getCachedInstFunc(cache, funcpath);
+         func = FCore.getCachedInstFunc(cache, funcpath);
         (cache, newval) = CevalFunction.evaluate(cache, env, func, vallst);
         // bcall1(Flags.isSet(Flags.DYN_LOAD), print, "[dynload]: constant evaluation SUCCESS: " + Absyn.pathString(funcpath) + "\n");
       then
@@ -2524,13 +2524,14 @@ algorithm
         if Flags.isSet(Flags.DYN_LOAD) then
           print("[dynload]: [SOME SYMTAB] not in in CF list: " + Absyn.pathString(funcpath) + "\n");
         end if;
-
+        execStatReset();
         p := SymbolTable.getAbsyn();
         // now is safe to generate code
         (cache, funcstr, fileName) := cevalGenerateFunction(cache, env, p, funcpath);
         print_debug := Flags.isSet(Flags.DYN_LOAD);
         libHandle := System.loadLibrary(fileName, print_debug);
         funcHandle := System.lookupFunction(libHandle, stringAppend("in_", funcstr));
+        execStat("Dynload Compile function("+Absyn.pathString(funcpath)+")");
         execStatReset();
         newval := DynLoad.executeFunction(funcHandle, vallst, print_debug);
         execStat("executeFunction("+Absyn.pathString(funcpath)+")");

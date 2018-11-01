@@ -43,7 +43,7 @@ uniontype OutVar
   record OUT_WILD end OUT_WILD;
 end OutVar;
 
-public //TODO, this is wrong investigate.
+public
 function varString
   input Var var;
   output String str;

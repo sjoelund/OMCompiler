@@ -907,13 +907,13 @@ algorithm
         left := convertFunctionTree(funcs.left);
         right := convertFunctionTree(funcs.right);
       then
-        DAE.FunctionTree.NODE(funcs.key, SOME(fn), funcs.height, left, right);
+        DAE.FunctionTree.NODE(funcs.key, SOME((SOME(fn),NONE())), funcs.height, left, right);
 
     case FunctionTree.LEAF()
       algorithm
         fn := convertFunction(funcs.value);
       then
-        DAE.FunctionTree.LEAF(funcs.key, SOME(fn));
+        DAE.FunctionTree.LEAF(funcs.key, SOME((SOME(fn),NONE())));
 
     case FunctionTree.EMPTY()
       then DAE.FunctionTree.EMPTY();

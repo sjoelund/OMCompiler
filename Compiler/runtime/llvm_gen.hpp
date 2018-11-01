@@ -29,7 +29,6 @@
  *
  */
 
-
 /*
   Short note. compiled without exceptions, this might effect ABI and so forth
   https://stackoverflow.com/questions/9545688/linking-with-code-that-does-not-support-exception-handling-c-llvm

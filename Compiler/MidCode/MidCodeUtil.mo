@@ -234,14 +234,14 @@ end isNotBuiltinCall;
 function getMidCodeCalledFuncs
   "Return the Absyn.path for all call terminators in a given MidCode function. Fetches all functions or just the user defined ones"
   input MidCode.Function f;
-  input Boolean fetchAll = false;
+  input Boolean fetchBuiltinAsWell = false;
   output list<Absyn.Path> calledFuncs;
 protected
   list<MidCode.Terminator> calls;
 algorithm
   calls := getTerminators(getBBs(f));
   calls := List.map(calls,getCallTerminator);
-  if not fetchAll then
+  if not fetchBuiltinAsWell then
 	calls := List.filterOnTrue(calls,isNotBuiltinCall);
   end if;
   calledFuncs := List.map(calls,getCallTermPath);

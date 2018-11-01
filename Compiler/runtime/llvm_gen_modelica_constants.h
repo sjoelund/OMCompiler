@@ -36,7 +36,7 @@
 #ifndef _LLVM_GEN_MODELICA_CONSTANTS_H
 #define _LLVM_GEN_MODELICA_CONSTANTS_H
 //Comment out for debug messages.
-#define DBG(...) fprintf(stderr, __VA_ARGS__)
+#define DBG(...) //fprintf(stderr, __VA_ARGS__)
 
 //Specifies how many bits we have for our integers in the enviroment.
 #define BITS 64 //Needs to be changed to be changed for different OS types.
@@ -51,7 +51,7 @@ enum {
 	MODELICA_METATYPE = 4,
 	MODELICA_TUPLE = 5,
 	MODELICA_VOID = 6,
-	/*Special pointer types*/
+	/* Special pointer types */
 	MODELICA_INTEGER_PTR = 11,
 	MODELICA_BOOLEAN_PTR = 22,
 	MODELICA_REAL_PTR = 33,

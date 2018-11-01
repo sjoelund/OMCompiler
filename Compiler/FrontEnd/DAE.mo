@@ -603,15 +603,18 @@ public uniontype DAElist "A DAElist is a list of Elements. Variables, equations,
 end DAElist;
 
 /* AVLTree for functions */
+public
+import Util;
+import MidCode;
 public type FunctionTree = AvlTreePathFunction.Tree;
-
 package AvlTreePathFunction "AvlTree for Path to Function"
 protected
-  import DAEDump;
+import DAEDump;
 public
   extends BaseAvlTree;
   redeclare type Key = Absyn.Path;
-  redeclare type Value = Option<Function>;
+  redeclare type Value = Option<tuple <Option<DAE.Function>, Option<MidCode.Function>>>;
+
   redeclare function extends keyStr
   algorithm
     outString := Absyn.pathString(inKey);
@@ -621,7 +624,7 @@ public
     outString := match inValue
       local
         Function f;
-      case SOME(f) then DAEDump.dumpFunctionStr(f);
+      case SOME((SOME(f),_)) then DAEDump.dumpFunctionStr(f);
       else "<NO_FUNCTION>";
     end match;
   end valueStr;
@@ -630,7 +633,248 @@ public
     outResult := Absyn.pathCompareNoQual(inKey1,inKey2);
   end keyCompare;
 
-  redeclare function addConflictDefault = addConflictReplace;
+  redeclare replaceable function addConflictDefault = addConflictReplace;
+  //Added here to keep backwards combatability with all the functions using the cache without MidCode.
+  redeclare function add
+    "Inserts a new node in the tree."
+    input Tree inTree;
+    input Key inKey;
+    input Option<Function> inDAEFunction;
+    input ConflictFunc conflictFunc = addConflictDefault "Used to resolve conflicts.";
+    output Tree tree=inTree;
+  protected
+    Value inValue = SOME((inDAEFunction, NONE()));
+  algorithm
+    tree := add2(inTree, inKey, inValue, conflictFunc);
+  end add;
+
+  function add2
+    input Tree inTree;
+    input Key inKey;
+    input Value inValue;
+    input ConflictFunc conflictFunc = addConflictDefault "Used to resolve conflicts.";
+    output Tree tree=inTree;
+  algorithm
+    tree := match tree
+      local
+        Key key;
+        Value value;
+        Integer key_comp;
+        Tree outTree;
+      case Tree.EMPTY()
+        then LEAF(inKey, inValue);
+      case Tree.NODE(key = key)
+        algorithm
+          key_comp := keyCompare(inKey, key);
+          if key_comp == -1 then
+            // Replace left branch.
+            tree.left := add2(tree.left, inKey, inValue, conflictFunc);
+          elseif key_comp == 1 then
+            // Replace right branch.
+            tree.right := add2(tree.right, inKey, inValue, conflictFunc);
+          else
+            // Use the given function to resolve the conflict.
+            value := conflictFunc(inValue, tree.value, key);
+            if not referenceEq(tree.value, value) then
+              tree.value := value;
+            end if;
+          end if;
+        then
+          if key_comp == 0 then tree else balance(tree);
+      case Tree.LEAF(key = key)
+        algorithm
+          key_comp := keyCompare(inKey, key);
+          if key_comp == -1 then
+            outTree := NODE(tree.key, tree.value, 2, LEAF(inKey,inValue), EMPTY());
+          elseif key_comp == 1 then
+            outTree := NODE(tree.key, tree.value, 2, EMPTY(), LEAF(inKey,inValue));
+          else
+            value := conflictFunc(inValue, tree.value, key);
+            if not referenceEq(tree.value, value) then
+              tree.value := value;
+            end if;
+            outTree := tree;
+          end if;
+        then
+          if key_comp == 0 then outTree else balance(outTree);
+     end match;
+   end add2;
+
+  redeclare function get
+    input Tree tree;
+    input Key key;
+    output Option<Function> outDAEFunction;
+  algorithm
+    outDAEFunction := Util.optTuple21(get2(tree, key));
+  end get;
+
+  function get2
+    "Fetches a value from the tree given a key, or fails if no value is associated
+     with the key."
+    input Tree tree;
+    input Key key;
+    output Value outValue;
+  protected
+    Key k;
+  algorithm
+    k := match tree
+      case NODE() then tree.key;
+      case LEAF() then tree.key;
+    end match;
+    outValue := match (keyCompare(key, k), tree)
+      case ( 0, LEAF()) then tree.value;
+      case ( 0, NODE()) then tree.value;
+      case ( 1, NODE()) then get2(tree.right, key);
+      case (-1, NODE()) then get2(tree.left, key);
+    end match;
+  end get2;
+
+  redeclare replaceable function addList
+    "Adds a list of key-value pairs to the tree."
+    input output Tree tree;
+    input list<tuple<Key,Option<Function>>> inDAEValues;
+    input ConflictFunc conflictFunc = addConflictDefault "Used to resolve conflicts.";
+  protected
+    Key key;
+    Option<Function> daeValue;
+  algorithm
+    for t in inDAEValues loop
+      (key, daeValue) := t;
+      tree := add2(tree, key, SOME((daeValue,NONE())), conflictFunc);
+    end for;
+  end addList;
+
+  redeclare function fromList
+    "Creates a new tree from a list of key-value pairs."
+    input list<tuple<Key,Option<Function>>> inValues;
+    input ConflictFunc conflictFunc = addConflictDefault "Used to resolve conflicts.";
+    output Tree tree = Tree.EMPTY();
+  protected
+    Key key;
+    Option<Function> value;
+  algorithm
+    for t in inValues loop
+      (key, value) := t;
+      tree := add(tree, key, value, conflictFunc);
+    end for;
+  end fromList;
+
+  redeclare replaceable function toList
+    "Converts the tree to a flat list of key-value tuples."
+    input Tree inTree;
+    input output list<tuple<Key, Option<Function>>> lst = {};
+  algorithm
+    lst := match inTree
+      local
+        Key key;
+        Value value;
+       case NODE(key=key,value=value)
+        algorithm
+          lst := toList(inTree.right, lst);
+          lst := (key, Util.optTuple21(value)) :: lst;
+          lst := toList(inTree.left, lst);
+        then lst;
+      case LEAF(key=key, value=value)
+        then (key, Util.optTuple21(value)) :: lst;
+        else lst;
+    end match;
+  end toList;
+
+redeclare function update
+  "Alias for add that replaces the node in case of conflict."
+  input Tree tree;
+  input Key key;
+  input Value value;
+  output Tree outTree = add2(tree, key, value, addConflictReplace);
+end update;
+
+redeclare function listValues
+  "Constructs a list of all the values in the tree."
+  input Tree tree;
+  input output list<Option<DAE.Function>> lst = {};
+algorithm
+  lst := match tree
+    local
+      Value value;
+    case NODE(value = value)
+      algorithm
+        lst := listValues(tree.right, lst);
+        lst := Util.optTuple21(value) :: lst;
+        lst := listValues(tree.left, lst);
+      then lst;
+    case LEAF(value = value) then Util.optTuple21(value) :: lst;
+    else lst;
+  end match;
+end listValues;
+
+redeclare function join
+  "Joins two trees by adding the second one to the first."
+  input output Tree tree;
+  input Tree treeToJoin;
+  input ConflictFunc conflictFunc = addConflictDefault "Used to resolve conflicts.";
+algorithm
+  tree := match treeToJoin
+    case Tree.EMPTY() then tree;
+    case Tree.NODE()
+      algorithm
+        tree := add(tree, treeToJoin.key, Util.optTuple21(treeToJoin.value), conflictFunc);
+        tree := join(tree, treeToJoin.left, conflictFunc);
+        tree := join(tree, treeToJoin.right, conflictFunc);
+      then tree;
+    case Tree.LEAF() then add(tree, treeToJoin.key, Util.optTuple21(treeToJoin.value), conflictFunc);
+  end match;
+end join;
+
+
+
+redeclare function mapFold<FT>
+  "Traverses the tree in depth-first pre-order and applies the given function to
+   each node, constructing a new tree with the resulting nodes. mapFold also
+   takes an extra argument which is updated on each call to the given function."
+  input Tree inTree;
+  input MapFunc inFunc;
+  input FT inStartValue;
+  output Tree outTree = inTree;
+  output FT outResult = inStartValue;
+  partial function MapFunc
+    input Key inKey;
+    input Option<Function> inValue;
+    input FT inFoldArg;
+    output Option<Function> outValue;
+    output FT outFoldArg;
+  end MapFunc;
+algorithm
+  outTree := match outTree
+    local
+      Key key;
+      Option<Function> value, new_value;
+      Tree branch, new_branch;
+    case NODE(key, SOME((value, NONE())))
+      algorithm
+        (new_branch, outResult) := mapFold(outTree.left, inFunc, outResult);
+        if not referenceEq(new_branch, outTree.left) then
+          outTree.left := new_branch;
+        end if;
+        (new_value, outResult) := inFunc(key, value, outResult);
+        if not referenceEq(value, new_value) then
+          outTree.value := SOME((new_value, NONE()));
+        end if;
+        (new_branch, outResult) := mapFold(outTree.right, inFunc, outResult);
+        if not referenceEq(new_branch, outTree.right) then
+          outTree.right := new_branch;
+        end if;
+      then outTree;
+    case LEAF(key, SOME((value, NONE())))
+      algorithm
+        (new_value, outResult) := inFunc(key, value, outResult);
+        if not referenceEq(value, new_value) then
+          outTree.value := SOME((new_value, NONE()));
+        end if;
+      then outTree;
+    else inTree;
+  end match;
+end mapFold;
+
 end AvlTreePathFunction;
 
 /* -- Algorithm.mo -- */

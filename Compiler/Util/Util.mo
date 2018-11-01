@@ -243,6 +243,15 @@ algorithm
   (_, outValue) := inTuple;
 end tuple22;
 
+public function optTuple21<T1, T2>
+  "Takes an option tuple of two values and returns the first value.
+   Example: optTuple22(SOME(1,'a')) => 1"
+  input Option<tuple<T1, T2>> inTuple;
+  output T1 outValue;
+algorithm
+  SOME((outValue, _)) := inTuple;
+end optTuple21;
+
 public function optTuple22<T1, T2>
   "Takes an option tuple of two values and returns the second value.
    Example: optTuple22(SOME('a',1)) => 1"

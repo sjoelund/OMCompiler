@@ -107,7 +107,7 @@ function addConflictKeep
   output Value value = oldValue;
 end addConflictKeep;
 
-redeclare function add
+redeclare replaceable function add
   "Inserts a new node in the tree."
   input Tree inTree;
   input Key inKey;
@@ -170,7 +170,7 @@ algorithm
   end match;
 end add;
 
-redeclare function addList
+redeclare replaceable function addList
   "Adds a list of key-value pairs to the tree."
   input output Tree tree;
   input list<tuple<Key,Value>> inValues;
@@ -185,7 +185,7 @@ algorithm
   end for;
 end addList;
 
-function update
+replaceable function update
   "Alias for add that replaces the node in case of conflict."
   input Tree tree;
   input Key key;
@@ -193,7 +193,7 @@ function update
   output Tree outTree = add(tree, key, value, addConflictReplace);
 end update;
 
-function get
+redeclare replaceable function get
   "Fetches a value from the tree given a key, or fails if no value is associated
    with the key."
   input Tree tree;
@@ -239,7 +239,7 @@ algorithm
   end match;
 end getOpt;
 
-function fromList
+replaceable function fromList
   "Creates a new tree from a list of key-value pairs."
   input list<tuple<Key,Value>> inValues;
   input ConflictFunc conflictFunc = addConflictDefault "Used to resolve conflicts.";
@@ -254,7 +254,7 @@ algorithm
   end for;
 end fromList;
 
-function toList
+replaceable function toList
   "Converts the tree to a flat list of key-value tuples."
   input Tree inTree;
   input output list<tuple<Key, Value>> lst = {};
@@ -279,7 +279,7 @@ algorithm
   end match;
 end toList;
 
-function listValues
+replaceable function listValues
   "Constructs a list of all the values in the tree."
   input Tree tree;
   input output list<Value> lst = {};
@@ -302,7 +302,7 @@ algorithm
   end match;
 end listValues;
 
-redeclare function join
+redeclare replaceable function join
   "Joins two trees by adding the second one to the first."
   input output Tree tree;
   input Tree treeToJoin;
@@ -514,7 +514,7 @@ algorithm
   end match;
 end foldCond;
 
-function mapFold<FT>
+replaceable function mapFold<FT>
   "Traverses the tree in depth-first pre-order and applies the given function to
    each node, constructing a new tree with the resulting nodes. mapFold also
    takes an extra argument which is updated on each call to the given function."
