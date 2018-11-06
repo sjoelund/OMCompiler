@@ -240,7 +240,7 @@ algorithm
       case SimCodeFunction.RECORD_DECL_FULL(__) then ();
       case SimCodeFunction.RECORD_DECL_DEF(__)
         algorithm
-          genRecordDeclDef(textString(dotPath(Tpl.MEM_TEXT({},{}),rDecl.path))
+          genRecordDeclDef( textString(dotPath(Tpl.MEM_TEXT({},{}),rDecl.path))
                            ,textString(underscorePath(Tpl.MEM_TEXT({},{}),rDecl.path))
                            ,rDecl.fieldNames);
       then ();
@@ -256,7 +256,7 @@ function genRecordDeclDef
   input list<String> fieldNames;
 protected
   Integer numFields = listLength(fieldNames);
-  String fieldsArray = encName+"__desc__fields";
+  String fieldsArray = encName+"__desc__fields"; //To keep naming conventions the same
 algorithm
   /*First generate field e.g the char** (Similar to CodegenCFunctions line 476) */
   /*Decide if we should have fields or not.*/
@@ -292,7 +292,7 @@ algorithm
 end genRecordDeclDef;
 
 function genProgram
-  "Given a MidCodeProgram p. Lower each function to a corresponding LLVM-IR function"
+  "Given a MidCodeProgram. Lower each function to a corresponding LLVM-IR function"
   input MidCode.Program p;
 algorithm
   //Start codegen in runtime/llvm_gen.cpp

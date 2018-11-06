@@ -396,7 +396,6 @@ void set_mmc_jumper(jmp_buf *jmpBuf)
   threadData->mmc_jumper = jmpBuf;
 }
 
-
 modelica_metatype value_to_mmc(modelica_metatype value)
 {
   switch (MMC_HDRCTOR(MMC_GETHDR(value))) {
