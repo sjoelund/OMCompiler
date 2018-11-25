@@ -124,9 +124,10 @@ extern "C"
       swiInst->setDefaultDest(bb);
       swiB = false;
     }
-    /*Fetch the struct*/
+
+    void setCdr(llvm::Value *newCdr) { this->cdr = newCdr; }
     std::vector<llvm::Type*> &getStructField() {return structField;}
-    llvm::Value *getCdr() {return cdr;}
+    llvm::Value *getCdr() {return this->cdr;}
   };
 
   //Contains the different components of a LLVM function prototype.
@@ -141,8 +142,7 @@ extern "C"
   struct Function {
     std::unique_ptr<FunctionPrototype> prototype;
     /*For looking up variables*/
-    std::map<std::string,llvm::AllocaInst*> symTab;
-    std::map<std::string,std::unique_ptr<Variable>> symTab2;
+    std::map<std::string,std::unique_ptr<Variable>> symTab;
     /*For looking up basic block, (they are NOT ordered in a linear fashion in Midcode).*/
     std::map<std::string,llvm::BasicBlock*> blockMap;
     /*For function calls*/
@@ -161,7 +161,7 @@ extern "C"
 
     void setPrototypeFunctionType(llvm::FunctionType *ft) { prototype->function_type = ft;}
     void setLLVMFunction(llvm::Function *f) { prototype->function = f; }
-    const std::string getName(){return prototype->function->getName();};
+    const std::string getName() {return prototype->function->getName();};
   };
 
   struct Program {
@@ -171,9 +171,9 @@ extern "C"
     /*Constants used to create a global struct */
     std::vector<llvm::GlobalVariable*> globalStructField;
     /*For looking up global constants*/
-    std::map<std::string,llvm::GlobalVariable*> globalConstants; //TODO: Might need to use a different subclass (generality).
+    std::map<std::string, llvm::GlobalVariable*> globalConstants; //TODO: Might need to use a different subclass (generality).
     /*Ident to keep track of functions (which in turn hold alot of stuff)*/
-    std::map<const std::string,std::shared_ptr<Function>> functions;
+    std::map<const std::string, std::shared_ptr<Function>> functions;
     /*Keeps track of the function that we are currently generating IR for*/
     std::shared_ptr<Function> currentFunc;
     llvm::LLVMContext context;
@@ -206,7 +206,7 @@ extern "C"
       functionPassMngr->add(llvm::createCFGSimplificationPass()); //Cleanup
       functionPassMngr->add(llvm::createInstructionCombiningPass());
       functionPassMngr->add(llvm::createFlattenCFGPass()); //Flatten the control flow graph.
-      //Loops
+      /*Loops*/
       functionPassMngr->add(llvm::createLoopIdiomPass());
       functionPassMngr->add(llvm::createSimpleLoopUnrollPass());
       functionPassMngr->add(llvm::createCFGSimplificationPass());

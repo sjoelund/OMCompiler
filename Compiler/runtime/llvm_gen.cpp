@@ -231,7 +231,7 @@ int createBranch(const char *conditionVar, const modelica_integer onTrue,
 
   llvm::Function *f{
       program->module->getFunction(program->currentFunc->getName())};
-  Variable *condVariable{program->currentFunc->symTab2[conditionVar].get()};
+  Variable *condVariable{program->currentFunc->symTab[conditionVar].get()};
   llvm::Value *cond{condVariable->getAllocaInst()};
 
   cond = program->builder.CreateLoad(cond, condVariable->isVolatile(),
@@ -353,7 +353,7 @@ int createFunctionBody(const char *name) {
     llvm::AllocaInst *ai{createAllocaInst(a.getName(), a.getType())};
     llvm::StoreInst *si{program->builder.CreateStore(&a, ai)};
     si->setAlignment(ai->getAlignment());
-    program->currentFunc->symTab2[a.getName()] =
+    program->currentFunc->symTab[a.getName()] =
         llvm::make_unique<Variable>(ai, false);
   }
 
@@ -369,9 +369,9 @@ int createCallArgAddr(const char *name) {
   if (program->globalConstants.count(name)) {
     program->currentFunc->callArgs.push_back(program->globalConstants[name]);
     return 0;
-  } else if (program->currentFunc->symTab2.count(name)) {
+  } else if (program->currentFunc->symTab.count(name)) {
     program->currentFunc->callArgs.push_back(
-        program->currentFunc->symTab2[name]->getAllocaInst());
+        program->currentFunc->symTab[name]->getAllocaInst());
     return 0;
   }
 
@@ -512,7 +512,7 @@ int createLongJmp() {
 int allocaInt(const char *name, const uint8_t nBits, const bool isVolatile) {
   llvm::AllocaInst *alloci{
       createAllocaInst(name, llvm::Type::getIntNTy(program->context, nBits))};
-  program->currentFunc->symTab2[alloci->getName()] =
+  program->currentFunc->symTab[alloci->getName()] =
       llvm::make_unique<Variable>(alloci, isVolatile);
   return 0;
 }
@@ -520,7 +520,7 @@ int allocaInt(const char *name, const uint8_t nBits, const bool isVolatile) {
 /*Allocates a modelica real, a double in LLVM IR*/
 int allocaDouble(const char *name, const bool isVolatile) {
   llvm::AllocaInst *alloci{createAllocaInst(name, getLLVMType(MODELICA_REAL))};
-  program->currentFunc->symTab2[alloci->getName()] =
+  program->currentFunc->symTab[alloci->getName()] =
       llvm::make_unique<Variable>(alloci, isVolatile);
   return 0;
 }
@@ -532,7 +532,7 @@ int allocaDouble(const char *name, const bool isVolatile) {
 int allocaInt8PtrTy(const char *name) {
   llvm::AllocaInst *alloci{
       createAllocaInst(name, getLLVMType(MODELICA_METATYPE))};
-  program->currentFunc->symTab2[alloci->getName()] =
+  program->currentFunc->symTab[alloci->getName()] =
       llvm::make_unique<Variable>(alloci, false);
   return 0;
 }
@@ -541,7 +541,7 @@ int allocaInt8PtrTy(const char *name) {
 int allocaInt8PtrPtrTy(const char *name) {
   llvm::AllocaInst *alloci{
       createAllocaInst(name, getLLVMType(MODELICA_METATYPE_PTR))};
-  program->currentFunc->symTab2[alloci->getName()] =
+  program->currentFunc->symTab[alloci->getName()] =
       llvm::make_unique<Variable>(alloci, false);
   return 0;
 }
@@ -549,7 +549,7 @@ int allocaInt8PtrPtrTy(const char *name) {
 /*Stores the result of src at dest.*/
 int createStoreVarInst(const char *src, const char *dest) {
   DBG("Calling store var instruction src:%s to dest:%s \n", src, dest);
-  Variable *srcVariable{program->currentFunc->symTab2[src].get()};
+  Variable *srcVariable{program->currentFunc->symTab[src].get()};
   llvm::AllocaInst *s{srcVariable->getAllocaInst()};
   llvm::Value *lv{
       program->builder.CreateLoad(s, srcVariable->isVolatile(), s->getName())};
@@ -566,8 +566,8 @@ int createStoreVarInst(const char *src, const char *dest) {
 */
 int createStoreToPtr(const char *src, const char *dest) {
   DBG("Calling createStoreToPTR\n");
-  Variable *srcVariable{program->currentFunc->symTab2[src].get()};
-  Variable *destVariable{program->currentFunc->symTab2[dest].get()};
+  Variable *srcVariable{program->currentFunc->symTab[src].get()};
+  Variable *destVariable{program->currentFunc->symTab[dest].get()};
 
   llvm::Value *s{srcVariable->getAllocaInst()};
   llvm::Value *d{destVariable->getAllocaInst()};
@@ -623,7 +623,7 @@ int storeLiteralIntForPtrTy(const std::uintptr_t addr, const char *dest) {
       /*Not signed.*/ false)};
   llvm::Value *pval{program->builder.CreateIntToPtr(
       ival, llvm::Type::getInt8PtrTy(program->context), "pointerTMP")};
-  // program->builder.CreateStore(pval,program->currentFunc->symTab2[dest]);
+  // program->builder.CreateStore(pval,program->currentFunc->symTab[dest]);
   createStoreInst(pval, dest);
   return 0;
 }
@@ -641,7 +641,7 @@ int storeThreadData_t(void *threadData, const char *threadDataID) {
 /*Handles return for a single variable*/
 int createReturn(const char *retVar) {
   DBG("Calling create return with retVariable: %s \n", retVar);
-  Variable *returnVariable{program->currentFunc->symTab2[retVar].get()};
+  Variable *returnVariable{program->currentFunc->symTab[retVar].get()};
   llvm::Value *ret = returnVariable->getAllocaInst();
   ret = program->builder.CreateLoad(ret, returnVariable->isVolatile(),
                                     ret->getName());
@@ -666,7 +666,7 @@ int createReturnZero() {
 /*Unary operators */
 int createIUminus(const char *src, const char *dest) {
   DBG("Creating i64 Uminus\n");
-  Variable *srcVariable{program->currentFunc->symTab2[src].get()};
+  Variable *srcVariable{program->currentFunc->symTab[src].get()};
   llvm::Value *s{srcVariable->getAllocaInst()};
   s = program->builder.CreateLoad(s, srcVariable->isVolatile(), s->getName());
   s = program->builder.CreateNeg(s, "negI64temp");
@@ -676,7 +676,7 @@ int createIUminus(const char *src, const char *dest) {
 
 int createDUminus(const char *src, const char *dest) {
   DBG("Creating DUminus\n");
-  Variable *srcVariable{program->currentFunc->symTab2[src].get()};
+  Variable *srcVariable{program->currentFunc->symTab[src].get()};
   llvm::Value *s{srcVariable->getAllocaInst()};
   s = program->builder.CreateLoad(s, srcVariable->isVolatile(), s->getName());
   s = program->builder.CreateFNeg(s, "negDtemp");
@@ -686,7 +686,7 @@ int createDUminus(const char *src, const char *dest) {
 
 int createNot(const char *src, const char *dest) {
   DBG("Creating  NOT\n");
-  Variable *srcVariable{program->currentFunc->symTab2[src].get()};
+  Variable *srcVariable{program->currentFunc->symTab[src].get()};
   llvm::Value *s{srcVariable->getAllocaInst()};
   s = program->builder.CreateLoad(s, srcVariable->isVolatile(), s->getName());
   s = program->builder.CreateNot(s, "notTmp");
@@ -722,8 +722,8 @@ int createIntToBool(const char *src, const char *dest) {
   // auto f
   // {std::bind(&llvm::IRBuilder<>::CreateIntCast,&program->builder,_1,_2,true,"intToBool")};
   DBG("Calling createIntToBool with %s %s\n", src, dest);
-  Variable *srcVariable{program->currentFunc->symTab2[src].get()};
-  Variable *destVariable{program->currentFunc->symTab2[dest].get()};
+  Variable *srcVariable{program->currentFunc->symTab[src].get()};
+  Variable *destVariable{program->currentFunc->symTab[dest].get()};
 
   llvm::Value *s{srcVariable->getAllocaInst()};
   llvm::Value *d{destVariable->getAllocaInst()};
@@ -736,8 +736,8 @@ int createIntToBool(const char *src, const char *dest) {
 
 int createBoolToInt(const char *src, const char *dest) {
   DBG("Calling createBoolToInt\n");
-  Variable *srcVariable{program->currentFunc->symTab2[src].get()};
-  Variable *destVariable{program->currentFunc->symTab2[dest].get()};
+  Variable *srcVariable{program->currentFunc->symTab[src].get()};
+  Variable *destVariable{program->currentFunc->symTab[dest].get()};
 
   llvm::Value *s{srcVariable->getAllocaInst()};
   llvm::Value *d{destVariable->getAllocaInst()};
@@ -1069,39 +1069,42 @@ int createBNequal(const char *lhs, const char *rhs, const char *dest) {
   return 0;
 }
 
-// TODO, kapsulera in detta i en klass enklare att förstå då? blir formodligen
-// samma elande men mer kod..
-static llvm::Value *cdr = nullptr; // The point of this variable is to keep the
-                                   // state when generating lists.
 
 /*
   Set value to nullptr prepare generation of a new list in the function
   currently being created.
 */
-void startGenLst() { cdr = nullptr; }
+void startGenLst() {
+  llvm::Value *cdr {program->currentFunc->imValMngr->getCdr()};
+  if (cdr) {
+    cdr->deleteValue();
+  }
+}
 
 // Assigns cdr to the lstName variable that is present in the symtab.
 int createLst(const char *lstName) {
   DBG("CreateMmcCons\n");
   // Assign the value of the pointer that points to lstName in the symbol table
-  // to
-  Variable *lstVariable{program->currentFunc->symTab2[lstName].get()};
+  Variable *lstVariable{program->currentFunc->symTab[lstName].get()};
   llvm::Value *lst{lstVariable->getAllocaInst()};
+  llvm::Value *cdr {program->currentFunc->imValMngr->getCdr()};
   program->builder.CreateStore(cdr, lst, lstVariable->isVolatile());
   return 0;
 }
+
 // TODO refactor this...
 int createMmcCons(
-    const char *carElement /*This refeers to a mmc already created.*/) {
+  const char *carElement /*This refeers to a mmc already created.*/) {
   DBG("CreateMmcCons\n");
   /*Fetch the arguments*/
   llvm::FunctionType *ft;
   llvm::Function *f;
+  llvm::Value *cdr {program->currentFunc->imValMngr->getCdr()};
   /*Creates the first, (really last cell) ugly special case.*/
   if (!cdr) {
     /*Load the carElement*/
     Variable *carElementVariable{
-        program->currentFunc->symTab2[carElement].get()};
+        program->currentFunc->symTab[carElement].get()};
     llvm::Value *ce = carElementVariable->getAllocaInst();
     /*Load instruction to set the alignment*/
     llvm::LoadInst *ceL = program->builder.CreateLoad(
@@ -1121,10 +1124,11 @@ int createMmcCons(
     }
     // Call it
     cdr = program->builder.CreateCall(f, args);
+    program->currentFunc->imValMngr->setCdr(cdr);
     return 0;
   }
   /*The other case when we have a cdr.*/
-  Variable *carElementVariable{program->currentFunc->symTab2[carElement].get()};
+  Variable *carElementVariable{program->currentFunc->symTab[carElement].get()};
   llvm::Value *ce{carElementVariable->getAllocaInst()};
   llvm::LoadInst *ceL{program->builder.CreateLoad(
       ce, carElementVariable->isVolatile(), ce->getName())};
@@ -1141,6 +1145,7 @@ int createMmcCons(
   }
 
   cdr = program->builder.CreateCall(f, args);
+  program->currentFunc->imValMngr->setCdr(cdr);
   return 0;
 }
 
@@ -1191,7 +1196,7 @@ int createStruct(const char *structName) {
   llvm::AllocaInst *structAi{createAllocaInst(structName, sType)};
 
   DBG("after call to createAllocaInst\n");
-  program->currentFunc->symTab2[structName] =
+  program->currentFunc->symTab[structName] =
       llvm::make_unique<Variable>(structAi, false);
   return 0;
 }
@@ -1285,7 +1290,7 @@ int createStoreDVarToPtr(const char *src, const char *dest,
 /*Fetches a double from an array and stores it at the variable dest.*/
 int createGetDoubleFromPtr(const char *src, const char *dest,
                            const uint8_t idx0) {
-  Variable *doubleVariable{program->currentFunc->symTab2[dest].get()};
+  Variable *doubleVariable{program->currentFunc->symTab[dest].get()};
   llvm::Value *dV{doubleVariable->getAllocaInst()};
   llvm::Value *vIdx0{llvm::ConstantInt::get(
       llvm::Type::getInt32Ty(program->context), idx0, false)};
@@ -1305,7 +1310,7 @@ int createStoreToStruct(const char *varName, const char *structName,
                         const uint8_t idx0, const uint8_t idx1) {
   DBG("Calling createStoreToStruct varName:%s to struct:%s", varName,
       structName);
-  Variable *structVariable{program->currentFunc->symTab2[structName].get()};
+  Variable *structVariable{program->currentFunc->symTab[structName].get()};
   llvm::Value *sv{structVariable->getAllocaInst()};
 
   if (!sv) {
@@ -1320,7 +1325,7 @@ int createStoreToStruct(const char *varName, const char *structName,
       llvm::Type::getInt32Ty(program->context), idx1, false)};
   /*Indices for the GEP instruction*/
   std::vector<llvm::Value *> indexVec{vIdx0, vIdx1};
-  Variable *retVariable{program->currentFunc->symTab2[varName].get()};
+  Variable *retVariable{program->currentFunc->symTab[varName].get()};
   llvm::Value *retVar{retVariable->getAllocaInst()};
   retVar = createLoadInst(varName);
   llvm::Value *structElem{
@@ -1334,7 +1339,7 @@ int createStoreToStruct(const char *varName, const char *structName,
  * by varName*/
 int createStoreFromStruct(const char *varName, const char *structName,
                           const uint8_t idx0, const uint8_t idx1) {
-  Variable *sourceVariable{program->currentFunc->symTab2[structName].get()};
+  Variable *sourceVariable{program->currentFunc->symTab[structName].get()};
   llvm::AllocaInst *sv{sourceVariable->getAllocaInst()};
 
   if (!sv) {
@@ -1360,7 +1365,7 @@ int createStoreFromStruct(const char *varName, const char *structName,
   structElemL->setAlignment(sv->getAlignment());
   structElem = structElemL;
   /*Create the variable we store the value from the struct to.*/
-  Variable *variable{program->currentFunc->symTab2[varName].get()};
+  Variable *variable{program->currentFunc->symTab[varName].get()};
   llvm::Value *var{variable->getAllocaInst()};
   structElem = program->builder.CreateStore(structElem, var,
                                             sourceVariable->isVolatile());

@@ -50,9 +50,9 @@ extern "C"
                  llvm::Value *&l, llvm::Value *&r, llvm::Value *&d)
   {
     DBG("Calling binop init\n");
-    Variable *leftVariable = program->currentFunc->symTab2[lhs].get();
-    Variable *rightVariable = program->currentFunc->symTab2[rhs].get();
-    Variable *destVariable = program->currentFunc->symTab2[dest].get();
+    Variable *leftVariable = program->currentFunc->symTab[lhs].get();
+    Variable *rightVariable = program->currentFunc->symTab[rhs].get();
+    Variable *destVariable = program->currentFunc->symTab[dest].get();
     DBG("Creating load instructions\n");
 
     l = leftVariable->getAllocaInst();
@@ -118,7 +118,7 @@ extern "C"
   /*For debugging. Print all keys in the symbol table */
   void printSymbolTable() {
     fprintf(stderr,"Keys in symbol table:\n");
-    for(const auto &p : program->currentFunc->symTab2) {
+    for(const auto &p : program->currentFunc->symTab) {
       fprintf(stderr,"%s\n",p.first.c_str());
     }
     fprintf(stderr,"\n");
@@ -150,7 +150,7 @@ extern "C"
   llvm::Value *createLoadInst(const char *dest)
   {
     DBG("Create load instruction with dest:%s\n line %d of file \"%s\".\n",dest,__LINE__, __FILE__);
-    Variable *destVar {program->currentFunc->symTab2[dest].get()};
+    Variable *destVar {program->currentFunc->symTab[dest].get()};
     llvm::AllocaInst* ai = destVar->getAllocaInst();
     llvm::LoadInst *li = program->builder.CreateLoad(ai, destVar->isVolatile(), ai->getName());
     li->setAlignment(ai->getAlignment());
@@ -161,7 +161,7 @@ extern "C"
   void createStoreInst(llvm::Value* val, const char *dest)
   {
     DBG("Create store instruction with dest:%s line %d of file \"%s\".\n",dest,__LINE__, __FILE__);
-    Variable *variable {program->currentFunc->symTab2[dest].get()};
+    Variable *variable {program->currentFunc->symTab[dest].get()};
     llvm::AllocaInst *ai {variable->getAllocaInst()};
     if (!ai) {
       fprintf(stderr,"No variable named:%s in symboltable\n",dest);
@@ -195,7 +195,7 @@ extern "C++"
   int castXTypeToYType(const char *src, const char *dest,llvm::Type* ty, Func irBuilderFunc)
   {
     DBG("CallingXTypeToYType\n");
-    Variable *variable {program->currentFunc->symTab2[src].get()};
+    Variable *variable {program->currentFunc->symTab[src].get()};
     llvm::Value *s {variable->getAllocaInst()};
     s = program->builder.CreateLoad(s,s->getName());
     DBG("Invoking builder instruction\n");
