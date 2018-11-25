@@ -448,7 +448,9 @@ function genLst
 algorithm
   EXT_LLVM.genAllocaModelicaMetaTy(lst);
   EXT_LLVM.startGenLst();
-  for v in lstToBeCreated loop EXT_LLVM.genMmcCons(v.name); end for;
+  for value in lstToBeCreated loop
+    EXT_LLVM.genMmcCons(value.name);
+  end for;
   EXT_LLVM.genLst(lst);
 end genLst;
 
