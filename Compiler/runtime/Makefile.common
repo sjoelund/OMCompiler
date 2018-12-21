@@ -19,6 +19,9 @@ else
 	configUnix =
 endif
 
+LLVM_FILES = llvm_gen_modelica_constants.h ext_llvm.hpp llvm_gen_util.hpp llvm_gen_util.cpp llvm_gen.hpp llvm_gen.cpp OMCJit.hpp
+LLVM_TARGET_FILE = llvm_gen.cpp
+
 OMC_OBJ_SHARED = Error_omc$(OBJEXT) \
   Print_omc.o \
   ErrorMessage$(OBJEXT) systemimplmisc.o System_omc$(OBJEXT) \
@@ -27,8 +30,8 @@ OMC_OBJ_SHARED = Error_omc$(OBJEXT) \
   IOStreamExt_omc.o Socket_omc.o ZeroMQ_omc.o getMemorySize.o \
   is_utf8.o \
   llvm_gen_wrappers.o \
-  real_array_jit.o \
-  llvm_gen$(OBJEXT)
+  llvm_gen.o \
+  real_array_jit$(OBJEXT) \
 
 OMC_OBJ_STUBS = corbaimpl_stub_omc.o
 
@@ -102,6 +105,8 @@ omc_communication.cc : omc_communication.idl
 	$(IDL) omc_communication.idl
 omc_communication.h: omc_communication.cc
 
+llvm_gen.o : $(LLVM_FILES)
+	$(CXX) -c $(CXXFLAGS) $(CPPFLAGS) $(LLVM_FLAGS) -I. $(LLVM_TARGET_FILE) -o llvm_gen.o
 Print_omc.o : printimpl.c printimpl.h
 omc_communication_impl.o: omc_communication.h
 Corba_omc.o: omc_communication.h corbaimpl.cpp
@@ -115,8 +120,7 @@ ZeroMQ_omc.o : zeromqimpl.c
 UnitParserExt_omc.o : unitparserext.cpp unitparser.h
 BackendDAEEXT_omc.o : BackendDAEEXT.cpp $(RML_COMPAT) matching.c matchmaker.h matching_cheap.c
 llvm_gen_wrappers.o : llvm_gen_wrappers.c llvm_gen_wrappers.h
-real_array_jit.o : real_array_jit.c real_array_jit.h
-llvm_gen.o : llvm_gen_modelica_constants.h llvm_gen_util.hpp llvm_gen_util.cpp llvm_gen.hpp llvm_gen.cpp
+real_array_jit$(OBJEXT) : real_array_jit.c real_array_jit.h
 
 # Objects depending on BOOTH
 Dynload_omc$(OBJEXT): systemimpl.h errorext.h $(BOOTH) $(SimRuntimeCDir)/util/read_write.h $(SimRuntimeCDir)/gc/omc_gc.h Dynload.cpp $(RML_COMPAT)
