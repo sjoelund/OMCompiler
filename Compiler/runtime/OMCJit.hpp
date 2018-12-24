@@ -42,8 +42,8 @@
 
 /*Adapted from the LLVM tutorial, thereby the license.*/
 
-#ifndef LLVM_EXECUTIONENGINE_ORC_KALEIDOSCOPEJIT_H
-#define LLVM_EXECUTIONENGINE_ORC_KALEIDOSCOPEJIT_H
+#ifndef LLVM_EXECUTIONENGINE_ORC_OMCJIT_H
+#define LLVM_EXECUTIONENGINE_ORC_OMCJIT_H
 
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ExecutionEngine/ExecutionEngine.h"

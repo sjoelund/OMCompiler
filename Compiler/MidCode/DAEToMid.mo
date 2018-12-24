@@ -863,7 +863,6 @@ algorithm
         stateAddStmt(MidCode.ASSIGN(varTmp,MidCode.DEREFERENCE(varArray,varCref.ty)),state);
         then MidCode.VARIABLE(varTmp);
     end match;
-//    print(anyString(rvalue) + "\n");
   then rvalue;
   case DAE.ASUB(exp1, expLst) //Array subscripts are not supported.
   algorithm
@@ -1771,9 +1770,8 @@ algorithm
 
     case (scrutinee,DAE.PAT_META_TUPLE(morePatterns)) :: restMatches
     algorithm
-      print("MATCHING META_TUPLE PATTERN\n");
       listTypes := match scrutinee.ty
-        case DAE.T_METATUPLE(listTypes) algorithm print("METAPAT:" + anyString(listTypes) + "\n"); then listTypes;
+        case DAE.T_METATUPLE(listTypes) then listTypes;
         else algorithm Error.addInternalError("Wrong type of midvar in tuple pattern: "  + DAEDump.daeTypeStr(scrutinee.ty) + ".\n", sourceInfo()); then fail();
       end match;
 
@@ -1991,7 +1989,8 @@ algorithm
   elseif dimSize == 2 then
     funcName := genArrayIxFunction2D(ty);
   else
-    print("Not supported\n");
+    print("Other dimSize in genArrayIxFunction Not supported\n");
+    fail();
   end if;
 end genArrayIxFunction;
 function genArrayIxFunction1D

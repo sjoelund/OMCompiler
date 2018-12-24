@@ -550,7 +550,6 @@ protected
   DAE.Type ty;
   list<Integer> allocaArgs;
 algorithm
-//  print("GenAllocaLLVMInstForVar\n");
   ty := var.ty;
   () := match ty
     case DAE.T_INTEGER(__) algorithm EXT_LLVM.genAllocaInt(genVarName(var),bitWidth,var.volatile); then();
@@ -559,7 +558,6 @@ algorithm
     case DAE.T_ARRAY(__)
       algorithm
           //Allocate the pointer to the base of the struct.
-//          print("alloca array:" + genVarName(var) + "\n");
           allocaBaseArray(var);
       then();
     else algorithm EXT_LLVM.genAllocaModelicaMetaTy(genVarName(var)); then();
