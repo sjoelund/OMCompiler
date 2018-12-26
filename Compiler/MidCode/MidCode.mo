@@ -89,11 +89,11 @@ uniontype Terminator
 //In LLVM this would be more logical to have as a statement //John
   record CALL
     Absyn.Path func;
-    Boolean builtin; //vilka övriga CallAttributes relevanta? Tex funktionstypen till funktionen :) // John
+    Boolean builtin;
     list<Var> inputs;
     list<OutVar> outputs;
     Integer next;
-	DAE.Type ty; //Added by John LLVM needs to know the type of the external call (Simplifies impl).
+	DAE.Type ty;
   end CALL;
 
   record RETURN

@@ -1993,6 +1993,7 @@ algorithm
     fail();
   end if;
 end genArrayIxFunction;
+
 function genArrayIxFunction1D
   "Generates the appropriate string describing the adressing function for 1D operations"
   input DAE.Type ty;
