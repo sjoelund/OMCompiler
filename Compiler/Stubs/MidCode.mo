@@ -40,5 +40,5 @@ end Program;
 
 type Function = Integer;
 
-annotation(__OpenModelica_Interface="backend");
+annotation(__OpenModelica_Interface="backendInterface");
 end MidCode;
