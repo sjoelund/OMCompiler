@@ -74,7 +74,7 @@ function JIT
   input list<Values.Value> valLst;
   output Values.Value newval;
  protected
-  constant String functionName = "omc_" + textString(underscorePath(Tpl.MEM_TEXT({},{}),functionToBeCalled.name));
+  constant String FUNCTION_NAME = "omc_" + textString(underscorePath(Tpl.MEM_TEXT({},{}),functionToBeCalled.name));
   constant String VAL_LST = "valLst";
   constant String TOP_LEVEL_EXPRESSION = "top_level_expression";
   constant String THREAD_DATA = "threadData";
@@ -113,23 +113,23 @@ algorithm
   EXT_LLVM.genCallArg(THREAD_DATA);
   List.map_0(List.map(functionArgs,genVarName),EXT_LLVM.genCallArg);
   if listLength(functionToBeCalled.outputs) == 1 then
-    EXT_LLVM.genCall(name=functionName
+    EXT_LLVM.genCall(name=FUNCTION_NAME
                      ,dest=genVarName(listHead(functionToBeCalled.outputs))
                      ,functionTy=getTypeIdentifierForVar(listHead(functionToBeCalled.outputs))
                      ,assignment=true
                      ,isVariadic=false);
   elseif listLength(functionToBeCalled.outputs) > 1 then
     List.map_0(List.map(functionToBeCalled.outputs,getTypeIdentifierForVar),EXT_LLVM.createStructElement);
-    EXT_LLVM.createStructSignature("outStruct_"+functionName);
-    EXT_LLVM.createStruct("outStruct_"+functionName);
-    EXT_LLVM.genCall(name=functionName
-                     ,dest="outStruct_"+functionName
+    EXT_LLVM.createStructSignature("outStruct_"+FUNCTION_NAME);
+    EXT_LLVM.createStruct("outStruct_"+FUNCTION_NAME);
+    EXT_LLVM.genCall(name=FUNCTION_NAME
+                     ,dest="outStruct_"+FUNCTION_NAME
                      ,functionTy=MODELICA_TUPLE
                      ,assignment=true
                      ,isVariadic=false);
-   storeValsFromStruct(List.map(functionToBeCalled.outputs,DAEToMid.varToOutVar),"outStruct_"+functionName,0);
+   storeValsFromStruct(List.map(functionToBeCalled.outputs,DAEToMid.varToOutVar),"outStruct_"+FUNCTION_NAME,0);
   else /*Void functions*/
-    EXT_LLVM.genCall(name=functionName
+    EXT_LLVM.genCall(name=FUNCTION_NAME
                      ,dest=""
                      ,functionTy=MODELICA_VOID
                      ,assignment=false
@@ -1012,7 +1012,7 @@ algorithm
         EXT_LLVM.genCallArgConstInt(0); //Write zeroes.
         EXT_LLVM.genCall(name="arrayCreate",functionTy=MODELICA_METATYPE,dest=genVarName(dest),assignment=true,isVariadic=false);//We now have an array, the dest variable is a pointer to it.
         //Add elements to said array.
-      ix := 1; //Arrays are indexed from 1
+      ix := 1;
       for e in elementArgs loop
         EXT_LLVM.genCallArg(genVarName(dest));
         EXT_LLVM.genCallArgConstInt(ix);

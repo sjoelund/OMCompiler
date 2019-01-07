@@ -19,7 +19,7 @@ else
 	configUnix =
 endif
 
-LLVM_FILES = llvm_gen_modelica_constants.h ext_llvm.hpp llvm_gen_util.hpp llvm_gen_util.cpp llvm_gen.hpp llvm_gen.cpp OMCJit.hpp
+LLVM_FILES = llvm_gen_modelica_constants.h ext_llvm.hpp llvm_gen_util.hpp llvm_gen.hpp llvm_gen.cpp OMCJit.hpp
 LLVM_TARGET_FILE = llvm_gen.cpp
 
 OMC_OBJ_SHARED = Error_omc$(OBJEXT) \

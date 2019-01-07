@@ -99,7 +99,7 @@ extern "C"
     return 8; //All other types should have 8. Yes Linux only probably..
   }
   /*For Debugging*/
-  const char *getModeicaLLVMTypeString(const uint8_t ty) {
+  const char *getModelicaLLVMTypeString(const uint8_t ty) {
     switch(ty) {
     case MODELICA_INTEGER: return "MODELICA_INTEGER";
     case MODELICA_BOOLEAN: return "MODELICA_BOOLEAN";

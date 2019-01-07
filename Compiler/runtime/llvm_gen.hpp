@@ -96,31 +96,31 @@ extern "C"
   class IntermediateValMngr {
   private:
     /*For switch instructions*/
-    llvm::SwitchInst *swiInst;
-    bool swiB; //swiInst is incomplete if this is true.
+    llvm::SwitchInst *switchInst;
+    bool switchIsIncomplete; //switchInst is incomplete if this is true.
     /*For generation of lists */
     llvm::Value *cdr;
     /*For generation of structs*/
     std::vector<llvm::Type*> structField;
   public:
     IntermediateValMngr() {
-      swiB = false;
-      swiInst = nullptr;
+      switchIsIncomplete = false;
+      switchInst = nullptr;
       cdr = nullptr;
     }
     /*Switch related functions*/
-    llvm::SwitchInst *getSwiInst() {return swiInst;}
-    const bool &switchNeedsDefaultBB() {return swiB;}
+    llvm::SwitchInst *getSwiInst() {return switchInst;}
+    const bool &switchNeedsDefaultBB() {return switchIsIncomplete;}
 
     int createSwitch(llvm::Value *cond, const modelica_integer numCases,llvm::IRBuilder<> builder) {
-      swiInst = builder.CreateSwitch(cond,nullptr,numCases);
-      swiB = true;
+      switchInst = builder.CreateSwitch(cond,nullptr,numCases);
+      switchIsIncomplete = true;
       return 0;
     }
 
     void setDefaultBBForSwiInst(llvm::BasicBlock *bb) {
-      swiInst->setDefaultDest(bb);
-      swiB = false;
+      switchInst->setDefaultDest(bb);
+      switchIsIncomplete = false;
     }
 
     void setCdr(llvm::Value *newCdr) { this->cdr = newCdr; }
