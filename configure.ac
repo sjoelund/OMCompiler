@@ -103,6 +103,7 @@ m4_include([common/m4/pre-commit.m4])
 cp common/install-sh common/config.guess common/config.sub ./
 m4_include([common/m4/ombuilddir.m4])
 m4_include([m4/lapack.m4])
+m4_include([m4/llvm.m4])
 
 AC_CANONICAL_BUILD
 AC_CANONICAL_HOST
@@ -639,6 +640,10 @@ AC_CHECK_HEADER([CL/cl.h],[OPENCL="Yes"],[
   AC_CHECK_HEADER([OpenCL/cl.h],[OPENCL="Yes"],[OPENCL="No"])
 ])
 FINAL_MESSAGES="$FINAL_MESSAGES\nParModelica: $OPENCL"
+
+OMC_AC_LLVM_SUPPORT()
+# OMC_AC_CHECK_LLVM_FUNCTIONS()
+FINAL_MESSAGES="$FINAL_MESSAGES\nLLVM: $HAVE_LLVM $LLVM_LIBS"
 
 AC_SUBST(CMAKE_LDFLAGS_UNDEFINED_LOOKUP)
 AC_SUBST(CMAKE_EXTRA_DEFINES)
