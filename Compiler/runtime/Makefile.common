@@ -19,8 +19,12 @@ else
 	configUnix =
 endif
 
+ifeq ($(HAVE_LLVM),Yes)
 LLVM_FILES = llvm_gen_modelica_constants.h ext_llvm.hpp llvm_gen_util.hpp llvm_gen.hpp llvm_gen.cpp OMCJit.hpp
 LLVM_TARGET_FILE = llvm_gen.cpp
+LLVM_OBJS = llvm_gen_wrappers.o llvm_gen.o
+else
+endif
 
 OMC_OBJ_SHARED = Error_omc$(OBJEXT) \
   Print_omc.o \
@@ -29,8 +33,7 @@ OMC_OBJ_SHARED = Error_omc$(OBJEXT) \
   UnitParserExt_omc.o unitparser.o \
   IOStreamExt_omc.o Socket_omc.o ZeroMQ_omc.o getMemorySize.o \
   is_utf8.o \
-  llvm_gen_wrappers.o \
-  llvm_gen.o \
+  $(LLVM_OBJS) \
   real_array_jit$(OBJEXT) \
 
 OMC_OBJ_STUBS = corbaimpl_stub_omc.o

@@ -38,6 +38,7 @@ LLVM_FLAGS = @LLVM_CPPFLAGS@ @LLVM_CFLAGS@
 TRIPLE=@host_short@
 SHREXT=@SHREXT@
 RPATH=@RPATH@
+HAVE_LLVM=@HAVE_LLVM@
 LDFLAGS = -L "$(builddir_lib)/$(TRIPLE)/omc/" -lOpenModelicaRuntimeC @OMCRUNTIME_SHARED_LDFLAGS@ @LLVM_LIBS@
 
 include Makefile.common
