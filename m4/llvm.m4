@@ -40,17 +40,22 @@ AC_DEFUN([OMC_AC_LLVM_SUPPORT],
 
   # no point continuing if llvm wasn't found
   if test -z "$LLVM_CONFIG"; then
-    AC_MSG_ERROR([llvm-config not found, but required when compiling --with-llvm, specify with LLVM_CONFIG=])
+    AC_MSG_RESULT([llvm-config not found; specify with LLVM_CONFIG=])
+  else
+    # check if detected $LLVM_CONFIG is executable
+    omc_ac_llvm_version="$($LLVM_CONFIG --version 2> /dev/null || echo no)"
+    if test "x$omc_ac_llvm_version" = "xno"; then
+      AC_MSG_RESULT([$LLVM_CONFIG does not work])
+      LLVM_CONFIG=""
+    # and whether the version is supported
+    elif echo $omc_ac_llvm_version | $AWK -F '.' '{ if ([$]1 >= 4 || ([$]1 == 3 && [$]2 >= 9)) exit 1; else exit 0;}';then
+      AC_MSG_RESULT([$LLVM_CONFIG version is $omc_ac_llvm_version but at least 3.9 is required])
+      LLVM_CONFIG=""
+    fi
   fi
-  # check if detected $LLVM_CONFIG is executable
-  omc_ac_llvm_version="$($LLVM_CONFIG --version 2> /dev/null || echo no)"
-  if test "x$omc_ac_llvm_version" = "xno"; then
-    AC_MSG_ERROR([$LLVM_CONFIG does not work])
-  fi
-  # and whether the version is supported
-  if echo $omc_ac_llvm_version | $AWK -F '.' '{ if ([$]1 >= 4 || ([$]1 == 3 && [$]2 >= 9)) exit 1; else exit 0;}';then
-    AC_MSG_ERROR([$LLVM_CONFIG version is $omc_ac_llvm_version but at least 3.9 is required])
-  fi
+  if test -z "$LLVM_CONFIG"; then
+    false
+  else
 
   # need clang to create some bitcode files
   if false; then
@@ -115,6 +120,7 @@ AC_DEFUN([OMC_AC_LLVM_SUPPORT],
   done
 
   LLVM_BINPATH=`$LLVM_CONFIG --bindir`
+  fi
 
   # LLVM_CONFIG, CLANG are already output via AC_ARG_VAR
   if test -z "$LLVM_BINPATH"; then
@@ -122,6 +128,7 @@ AC_DEFUN([OMC_AC_LLVM_SUPPORT],
   else
     HAVE_LLVM="Yes"
   fi
+
   AC_SUBST(HAVE_LLVM)
   AC_SUBST(LLVM_LIBS)
   AC_SUBST(LLVM_CPPFLAGS)
