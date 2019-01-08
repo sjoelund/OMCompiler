@@ -546,7 +546,7 @@ constant DebugFlag NF_EXPAND_FUNC_ARGS = DEBUG_FLAG(185, "nfExpandFuncArgs", fal
   Util.gettext("Expand all function arguments in the new frontend."));
 
 //Added for LLVM
-constant DebugFlag JIT_EVAL_FUNC = DEBUG_FLAG(186, "jit_eval_func", false,
+constant DebugFlag JIT_EVAL_FUNC = DEBUG_FLAG(186, "jit_eval_func", true,
  Util.gettext("Turns on/off JIT compilation"));
 constant DebugFlag JIT_DUMP_IR = DEBUG_FLAG(187, "jit_dump_ir", false,
  Util.gettext("Dumps LLVM-IR before execution"));
